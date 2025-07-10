@@ -1,0 +1,22 @@
+html {
+  color: light-dark(black, white);
+  background-color: light-dark(white, black);
+  color-scheme: dark;
+
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+pre {
+  background-color: darkslategray;
+  padding: 8px;
+  padding-right: 32px;
+  border-radius: 4px;
+  width: fit-content;
+  font-family: "Courier New", Courier, monospace;
+}
+
+.square {
+  width: 20px;
+  height: 20px;
+  float: left;
+}

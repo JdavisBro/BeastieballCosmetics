@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="style.css" />
+    <title>BeastieballCosmetics Docs</title>
+  </head>
+  <body>
+    <h1>BeastieballCosmetics Docs</h1>
+    <h1>Getting regular data</h1>
+    Some of the data you might need to be similar or exactly the same as game data, you can get most of this data on <a href="https://beastieball.info/beastiepedia/" target="_blank">beastieball.info</a>'s beastiepedia, by opening the console you can view the current beastie's data with the "beastie" varaiable.
+    <h1>Shader color replacement</h1>
+    Colors in Beastie images are replaced by shaders, the shader uses the color's HSV hue to determine which colors to replace.
+    <ul>
+      <li><div class="square" style="background-color: #f00;" ></div> Color A - Red 0° / 0%</li>
+      <li><div class="square" style="background-color: #0f0;" ></div> Color B - Green 120° / 33%</li>
+      <li><div class="square" style="background-color: #00f;" ></div> Color C - Blue 240° / 66%</li>
+      <li><div class="square" style="background-color: #ff0;" ></div> Color D - Yellow 60° / 16%</li>
+      <li><div class="square" style="background-color: #0ff;" ></div> Color E - Cyan 180° / 50%</li>
+      <li><div class="square" style="background-color: #f0f;" ></div> Color F - Magenta 300° / 83%</li>
+    </ul>
+    Saturation and Value are still used, so you can make a lighter color by reducing Satuaration, and a darker color by reducing Value.
+    <h1>JSON keys</h1>
+    <div>
+      <div>
+        <h2>type</h2>
+        <p>This should only ever be "beastie" right now.</p>
+      </div>
+      <div>
+        <h2>id</h2>
+        <p>
+          This should be unique for all loaded swaps, I'd recommend adding your
+          name as a prefix to any swaps you create to ensure that ids don't
+          conflict.
+        </p>
+        <p>Example: <pre>"id": "jdavis-sprecko-hat",</pre></p>
+      </div>
+      <div>
+        <h2>condition</h2>
+        <p>
+          The conditions for this swap to activate.
+          <h3>specie</h3>
+          string (beastie specie id) or null. Matches if null or the beastie specie's id is the same. IDs can be gotten with "beastie.id" in beastieball.info console.
+          <h3>names</h3>
+          string array or null. Matches if null or the beastie's name is any of the strings.
+        </p>
+        <p>Example: <pre>"condition": {
+    "specie": "shroom1",
+    "names": ["Evil", "Red"]
+},</pre></p>
+      </div>
+      <div>
+        <h2>sprite</h2>
+        <p>
+          Either a string or an object with the below keys.
+          The string should be the name of the beastie's sprite, can be gotten with the "beastie.spr" key or "beastie.spr_alt" key for alternate sprites.
+          When using an object and loading sprites, sprites should be 1000 x 1000
+          <h3>filename</h3>
+          Template filename formatted using C++ std::format. {} will be replaced with the number of sprite being added, e.g. "{}.png" becomes "0.png", "10.png" and "{:02}.png" becomes "00.png", "10.png".
+          <h3>count</h3>
+          Count of images, images will be added starting at 0 and ending at this - 1, so a value of 36 would add 0 through 35.
+          <h3>origin</h3>
+          Array with 2 numbers. X origin, Y origin. Bottom middle of the beastie, where it meets the floor.
+          <h3>animations</h3>
+          Currently only accepts a string with a beastie's sprite name and copies their animation, see string explanation above.
+        </p>
+        <p>Example: <pre>"sprite": {
+  "filename": "spreckoHat/{}.png",
+  "count": 36,
+  "origin": [484, 989],
+  "animations": "sprShroom1"
+}</pre></p>
+      </div>
+      <div>
+        <h2>colors, shiny, colors2</h2>
+        <p>
+          Either a string (beastie id) or an object with the below keys. When using a string, it'll copy the beastie's color for that type.
+          <br />
+          Each of these variables contain a colorSet, which has different gradients for each color part of a beastie: A, B, C, D, E, F.
+          <br />
+          A colorSet is an array, which contains arrays (gradients) which contain gradient colors. Gradient colors have a "color" which is a GML color decimal (BGR instead of RGB) which can be made easily <a href="https://data.chicory.pizza/palette" target="_blank">here</a>. And an X value, which is the position along the gradient from 0 to 1.
+          <br />
+          colors is used for regular beasties, shiny is used for raremorph beasties, colors2 is used for beasties that have alternate palettes. If you don't define a shiny or colors2 palette it'll default to colors, if colors doesn't exist it'll default to the replaced beastie's usual colors.
+          <br />
+          When getting a color past the length of the colorSet it will loop, e.g. trying to get color D when there is only A and B will get color B.
+          <br />
+          Base beastie palettes can be gotten with the "beastie.colors", "beastie.shiny", and "beastie.colors2" keys. Although they'll have an extra object for gradients. {"array": [gradientcolors]}, which can either be removed or kept and will still work.
+        </p>
+        <p>Example: <pre>"colors": [
+  [
+    { "color": 255, "x": 0 },
+    { "color": 16711680, "x": 1}
+  ],
+  [
+    { "color": 255, "x": 0 },
+    { "color": 65280, "x": 0.5 },
+    { "color": 16711680, "x": 1}
+  ]
+],
+</pre></p>
+      </div>
+    </div>
+  </body>
+</html>
