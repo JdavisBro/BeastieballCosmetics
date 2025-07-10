@@ -232,7 +232,7 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
       {
         colorSet = swap["colors"];
       }
-      if (colorSet.is_array())
+      if (colorSet.is_array() && colorSet.size() > 0)
       {
         json gradient = colorSet[colorIndex % colorSet.size()];
         colorX = colorX - (int)colorX;
@@ -300,6 +300,29 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
     g_ModuleInterface->PrintInfo(e.what());
   }
   getColorOriginal(Self, Other, ReturnValue, numArgs, Args);
+
+  return ReturnValue;
+}
+
+PFUNC_YYGMLScript getColorNumOriginal = nullptr;
+RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
+{
+  std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("specie")}).ToString();
+  std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("name")}).ToString();
+  json swap = MatchSwaps(beastie_id, beastie_name);
+  if (!swap.is_null())
+  {
+    size_t numCol = swap["colors"].is_array() ? swap["colors"].size() : 0;
+    size_t numCol2 = swap["colors2"].is_array() ? swap["colors2"].size() : 0;
+    size_t numShiny = swap["shiny"].is_array() ? swap["shiny"].size() : 0;
+    size_t maxNum = max(numCol, max(numCol2, numShiny));
+    if (maxNum > 0)
+    {
+      ReturnValue = RValue(maxNum);
+      return ReturnValue;
+    }
+  }
+  getColorNumOriginal(Self, Other, ReturnValue, numArgs, Args);
 
   return ReturnValue;
 }
@@ -376,6 +399,7 @@ void CreateAllHooks()
   CreateHook("BC SpriteAlt", "gml_Script_sprite_alt@anon@14908@class_beastie_template@class_beastie_template", SpriteAlt, reinterpret_cast<PVOID *>(&spriteAltOriginal));
   CreateHook("BC CharAnim", "gml_Script_char_animation", CharAnimationBefore, reinterpret_cast<PVOID *>(&charAnimationOriginal));
   CreateHook("BC GetColor", "gml_Script_get_color@anon@33539@class_beastie_global@class_beastie", GetColorBefore, reinterpret_cast<PVOID *>(&getColorOriginal));
+  CreateHook("BC GetColorNum", "gml_Script_get_color_num@anon@32936@class_beastie_global@class_beastie", GetColorNumBefore, reinterpret_cast<PVOID *>(&getColorNumOriginal));
 
   CreateHook("BC DrawMonsterMenu", "gml_Script_draw_monster_menu", DrawMonsterMenu, reinterpret_cast<PVOID *>(&drawMonsterMenuOriginal));
   CreateHook("BC Sprite", "gml_Script_sprite@anon@14851@class_beastie_template@class_beastie_template", Sprite, reinterpret_cast<PVOID *>(&spriteOriginal));
