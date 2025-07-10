@@ -304,6 +304,8 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
   return ReturnValue;
 }
 
+static bool setActionFrame = false;
+
 PFUNC_YYGMLScript getColorNumOriginal = nullptr;
 RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
@@ -312,6 +314,25 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
   json swap = MatchSwaps(beastie_id, beastie_name);
   if (!swap.is_null())
   {
+    if (setActionFrame)
+    {
+      RValue objActionframe = g_ModuleInterface->CallBuiltin("asset_get_index", {"objActionframe"});
+      int actionFrameCount = g_ModuleInterface->CallBuiltin("instance_number", {objActionframe}).ToInt32();
+      RValue actionFrame;
+      for (int i = 0; i < actionFrameCount; i++)
+      {
+        actionFrame = g_ModuleInterface->CallBuiltin("instance_find", {objActionframe, RValue(i)});
+        if (g_ModuleInterface->CallBuiltin("variable_instance_get", {actionFrame, RValue("time")}).ToInt32() < 0)
+        {
+          break;
+        }
+      }
+      RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
+      g_ModuleInterface->CallBuiltin("variable_instance_set", {actionFrame,
+                                                               RValue("sprite_index"),
+                                                               swap_sprite});
+    }
+
     size_t numCol = swap["colors"].is_array() ? swap["colors"].size() : 0;
     size_t numCol2 = swap["colors2"].is_array() ? swap["colors2"].size() : 0;
     size_t numShiny = swap["shiny"].is_array() ? swap["shiny"].size() : 0;
@@ -392,6 +413,15 @@ RValue &Sprite(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numAr
   return ReturnValue;
 }
 
+PFUNC_YYGMLScript actionFrameOriginal = nullptr;
+RValue &ActionFrame(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
+{
+  setActionFrame = true;
+  actionFrameOriginal(Self, Other, ReturnValue, numArgs, Args);
+  setActionFrame = false;
+  return ReturnValue;
+}
+
 void CreateAllHooks()
 {
   CreateHook("BC CharAnimDraw", "gml_Script_char_animation_draw", CharAnimationDrawBefore, reinterpret_cast<PVOID *>(&charAnimationDrawOriginal));
@@ -403,4 +433,6 @@ void CreateAllHooks()
 
   CreateHook("BC DrawMonsterMenu", "gml_Script_draw_monster_menu", DrawMonsterMenu, reinterpret_cast<PVOID *>(&drawMonsterMenuOriginal));
   CreateHook("BC Sprite", "gml_Script_sprite@anon@14851@class_beastie_template@class_beastie_template", Sprite, reinterpret_cast<PVOID *>(&spriteOriginal));
+
+  CreateHook("BC ActionFrame", "gml_Script_ActionFrame", ActionFrame, reinterpret_cast<PVOID *>(&actionFrameOriginal));
 }
