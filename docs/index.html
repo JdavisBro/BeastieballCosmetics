@@ -57,7 +57,7 @@
           The string should be the name of the beastie's sprite, can be gotten with the "beastie.spr" key or "beastie.spr_alt" key for alternate sprites.
           When using an object and loading sprites, sprites should be 1000 x 1000
           <h3>filename</h3>
-          Template filename formatted using C++ std::format. {} will be replaced with the number of sprite being added, e.g. "{}.png" becomes "0.png", "10.png" and "{:02}.png" becomes "00.png", "10.png".
+          Template filename formatted using C++ std::format. {} will be replaced with the number of sprite being added, e.g. "{}.png" becomes "0.png", "10.png" and "{:02}.png" becomes "00.png", "10.png". This path is from the BeastieballCosmetics directory, so add your subdir to it e.g. "spreckoHat/{}.png".
           <h3>count</h3>
           Count of images, images will be added starting at 0 and ending at this - 1, so a value of 36 would add 0 through 35.
           <h3>origin</h3>

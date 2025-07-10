@@ -28,3 +28,7 @@ Example BeastieCosmetics dir:
   - ...
   - 35.png
   - hat.json
+
+## Creating Swaps
+
+See the [Docs](https://JdavisBro.github.io/BeastieballCosmetics/) for more info on how Swap JSON are formatted and how the beastie shader works.
