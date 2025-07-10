@@ -107,9 +107,6 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
     }
     else
     {
-      RValue chars = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_dic")});
-      RValue specie = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")});
-      RValue beastie = g_ModuleInterface->CallBuiltin("ds_map_find_value", {chars, specie});
       g_ModuleInterface->CallBuiltin("variable_instance_set", {RValue(Self), RValue("animation_beastie_id"), beastie});
       update_sprite = true;
     }
