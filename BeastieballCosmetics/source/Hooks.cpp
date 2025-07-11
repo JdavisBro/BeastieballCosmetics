@@ -9,24 +9,6 @@ using json = nlohmann::json;
 using namespace Aurie;
 using namespace YYTK;
 
-AurieStatus GetScript(std::string FunctionName, CScript *&script)
-{
-  AurieStatus last_status = AURIE_SUCCESS;
-  int index;
-  last_status = g_ModuleInterface->GetNamedRoutineIndex(FunctionName.c_str(), &index);
-  if (!AurieSuccess(last_status))
-  {
-    g_ModuleInterface->PrintWarning("Failed to get index for %s", FunctionName);
-    return last_status;
-  }
-  last_status = g_ModuleInterface->GetScriptData(index - 100000, script);
-  if (!AurieSuccess(last_status))
-  {
-    g_ModuleInterface->PrintWarning("Failed to get data for %s", FunctionName);
-  }
-  return last_status;
-}
-
 void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction, PVOID *Trampoline)
 {
   AurieStatus last_status = AURIE_SUCCESS;

@@ -14,6 +14,27 @@ using namespace YYTK;
 #include <format>
 
 YYTKInterface *g_ModuleInterface = nullptr;
+
+AurieStatus GetScript(std::string FunctionName, CScript *&script)
+{
+	AurieStatus last_status = AURIE_SUCCESS;
+	int index;
+	last_status = g_ModuleInterface->GetNamedRoutineIndex(FunctionName.c_str(), &index);
+	if (!AurieSuccess(last_status))
+	{
+		g_ModuleInterface->PrintWarning("Failed to get index for %s", FunctionName);
+		return last_status;
+	}
+	last_status = g_ModuleInterface->GetScriptData(index - 100000, script);
+	if (!AurieSuccess(last_status))
+	{
+		g_ModuleInterface->PrintWarning("Failed to get data for %s", FunctionName);
+	}
+	return last_status;
+}
+
+PFUNC_YYGMLScript elephantFromJson = nullptr;
+
 std::vector<json> loaded_swaps;
 std::map<std::string, RValue> swap_sprites;
 std::map<std::string, RValue> swap_loco;
@@ -93,9 +114,6 @@ RValue AddSprite(json spr_data, std::string id)
 																																	 RValue(989),
 																															 });
 
-	RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
-	RValue char_anims = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_animations")});
-
 	std::string spriteStr = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite})
 															.ToString();
 
@@ -114,23 +132,41 @@ RValue AddSprite(json spr_data, std::string id)
 		g_ModuleInterface->CallBuiltin("sprite_delete", {frame});
 	}
 
-	if (spr_data["animations"].is_string())
+	json json_animations = spr_data["animations"];
+
+	RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
+	RValue char_anims = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_animations")});
+
+	RValue impact;
+	if (json_animations.is_string())
 	{
-		std::string oldSpriteStr = spr_data["animations"].get<std::string>();
-		RValue oldImpact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + oldSpriteStr)});
-		g_ModuleInterface->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact,
-																													 RValue("_" + spriteStr),
-																													 oldImpact});
-
-		RValue oldSprite = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(oldSpriteStr)});
-		RValue oldAnimations = g_ModuleInterface->CallBuiltin("ds_map_find_value", {char_anims,
-																																								oldSprite});
-		g_ModuleInterface->CallBuiltin("ds_map_set", {char_anims, sprite, oldAnimations});
-
-		// loco
-		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {oldImpact, RValue("loco_data")});
-		swap_loco[id] = loco;
+		std::string oldSpriteStr = json_animations.get<std::string>();
+		impact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + oldSpriteStr)});
 	}
+	else if (json_animations.is_object())
+	{
+		RValue parsed = g_ModuleInterface->CallBuiltin("json_parse", {RValue(json_animations.dump())});
+		RValue *args[] = {&parsed};
+		elephantFromJson(nullptr, nullptr, impact, 1, args);
+	}
+
+	if (!impact.ToBoolean())
+	{
+		g_ModuleInterface->PrintInfo("Error Loading Sprite Animations. %s", id);
+		return RValue();
+	}
+	RValue animations = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
+	RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
+	if (!animations.ToBoolean() || !loco.ToBoolean())
+	{
+		g_ModuleInterface->PrintInfo("Error Loading Sprite Animations. %s", id);
+		return RValue();
+	}
+	g_ModuleInterface->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact,
+																												 RValue("_" + spriteStr),
+																												 impact});
+	g_ModuleInterface->CallBuiltin("ds_map_set", {char_anims, sprite, animations});
+	swap_loco[id] = loco;
 
 	return sprite;
 }
@@ -209,6 +245,11 @@ void AddSwap(json data, std::string FileName)
 void LoadSwaps()
 {
 	g_ModuleInterface->Print(CM_LIGHTGREEN, "[BeastieballCosmetics] - Loading Swaps!");
+
+	CScript *script = nullptr;
+	AurieStatus last_status = GetScript("gml_Script_ElephantFromJSON", script);
+	elephantFromJson = script->m_Functions->m_ScriptFunction;
+
 	std::filesystem::path dir = {"mods"};
 	dir = dir / "Aurie" / "BeastieballCosmetics";
 	std::filesystem::create_directories(dir);

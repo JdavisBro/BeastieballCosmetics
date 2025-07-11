@@ -8,6 +8,9 @@ using namespace Aurie;
 using namespace YYTK;
 
 extern YYTKInterface *g_ModuleInterface;
+
+AurieStatus GetScript(std::string FunctionName, CScript *&script);
+
 extern std::vector<json> loaded_swaps;
 extern std::map<std::string, RValue> swap_sprites;
 extern std::map<std::string, RValue> swap_loco;
