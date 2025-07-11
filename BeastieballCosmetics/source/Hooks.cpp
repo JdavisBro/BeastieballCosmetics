@@ -104,6 +104,9 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
       g_ModuleInterface->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index_swap"), swap_sprite});
       g_ModuleInterface->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index"), swap_sprite});
       g_ModuleInterface->CallBuiltin("variable_instance_set", {RValue(Self), RValue("animation_beastie_id"), RValue()});
+      RValue swap_loc = swap_loco[swap["id"].get<std::string>()];
+      *Args[2] = swap_loc;
+      numArgs = max(numArgs, 3);
     }
     else
     {
@@ -416,6 +419,32 @@ RValue &ActionFrame(CInstance *Self, CInstance *Other, RValue &ReturnValue, int 
   return ReturnValue;
 }
 
+PFUNC_YYGMLScript locomoteOriginal = nullptr;
+RValue &LocomoteBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
+{
+  bool update_sprite = false;
+  RValue beastie = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
+  if (!beastie.ToBoolean())
+  {
+    beastie = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("my_data")});
+  }
+  if (beastie.ToBoolean())
+  {
+    std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
+    std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+
+    json swap = MatchSwaps(beastie_id, beastie_name);
+    if (!swap.is_null())
+    {
+      RValue swap_loc = swap_loco[swap["id"].get<std::string>()];
+      *Args[0] = swap_loc;
+    }
+  }
+  locomoteOriginal(Self, Other, ReturnValue, numArgs, Args);
+
+  return ReturnValue;
+}
+
 void CreateAllHooks()
 {
   CreateHook("BC CharAnimDraw", "gml_Script_char_animation_draw", CharAnimationDrawBefore, reinterpret_cast<PVOID *>(&charAnimationDrawOriginal));
@@ -429,4 +458,6 @@ void CreateAllHooks()
   CreateHook("BC Sprite", "gml_Script_sprite@anon@14851@class_beastie_template@class_beastie_template", Sprite, reinterpret_cast<PVOID *>(&spriteOriginal));
 
   CreateHook("BC ActionFrame", "gml_Script_ActionFrame", ActionFrame, reinterpret_cast<PVOID *>(&actionFrameOriginal));
+
+  CreateHook("BC Locomote", "gml_Script_locomote", LocomoteBefore, reinterpret_cast<PVOID *>(&locomoteOriginal));
 }

@@ -16,6 +16,7 @@ using namespace YYTK;
 YYTKInterface *g_ModuleInterface = nullptr;
 std::vector<json> loaded_swaps;
 std::map<std::string, RValue> swap_sprites;
+std::map<std::string, RValue> swap_loco;
 
 std::string required_keys[] = {
 		"type", "sprite", "condition", "id"};
@@ -55,7 +56,7 @@ bool IsColorsValid(json colors)
 	return true;
 }
 
-RValue AddSprite(json spr_data)
+RValue AddSprite(json spr_data, std::string id)
 {
 	g_ModuleInterface->PrintInfo(spr_data.dump());
 	if (!spr_data["filename"].is_string())
@@ -125,6 +126,10 @@ RValue AddSprite(json spr_data)
 		RValue oldAnimations = g_ModuleInterface->CallBuiltin("ds_map_find_value", {char_anims,
 																																								oldSprite});
 		g_ModuleInterface->CallBuiltin("ds_map_set", {char_anims, sprite, oldAnimations});
+
+		// loco
+		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {oldImpact, RValue("loco_data")});
+		swap_loco[id] = loco;
 	}
 
 	return sprite;
@@ -150,9 +155,16 @@ void AddSwap(json data, std::string FileName)
 	json sprite = data["sprite"];
 	if (sprite.is_string())
 	{
-		g_ModuleInterface->PrintInfo("sprite %s", sprite.get<std::string>());
-		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprite.get<std::string>())});
+		std::string sprName = sprite.get<std::string>();
+		g_ModuleInterface->PrintInfo("sprite %s", sprName);
+		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprName)});
 		swap_sprites[id] = spriteRef;
+
+		// loco
+		RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
+		RValue oldImpact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
+		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {oldImpact, RValue("loco_data")});
+		swap_loco[id] = loco;
 	}
 	else
 	{
@@ -162,7 +174,7 @@ void AddSwap(json data, std::string FileName)
 			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", FileName);
 			return;
 		}
-		RValue spriteRef = AddSprite(sprite);
+		RValue spriteRef = AddSprite(sprite, id);
 		if (!spriteRef.ToBoolean())
 		{
 			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", FileName);
