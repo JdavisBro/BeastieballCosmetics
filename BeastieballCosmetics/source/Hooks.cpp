@@ -114,8 +114,11 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
   charAnimationDrawOriginal(Self, Other, ReturnValue, numArgs, Args);
   if (update_sprite)
   {
-    RValue spriteswap = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("sprite_index_swap")});
-    g_ModuleInterface->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index"), spriteswap});
+    RValue chars = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_dic")});
+    RValue specie = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")});
+    RValue beastie_template = g_ModuleInterface->CallBuiltin("ds_map_find_value", {chars, specie});
+    RValue spr = g_ModuleInterface->CallBuiltin("variable_struct_get", {beastie_template, RValue("spr")});
+    g_ModuleInterface->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index"), spr});
   }
 
   return ReturnValue;
