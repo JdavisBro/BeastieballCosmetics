@@ -197,6 +197,10 @@ RValue &CharAnimationBefore(CInstance *Self, CInstance *Other, RValue &ReturnVal
     {
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
       g_ModuleInterface->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index"), swap_sprite});
+      if (numArgs >= 4)
+      {
+        *Args[3] = swap_sprite;
+      }
     }
   }
   charAnimationOriginal(Self, Other, ReturnValue, numArgs, Args);
