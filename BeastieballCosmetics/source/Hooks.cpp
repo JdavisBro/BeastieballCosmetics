@@ -201,8 +201,11 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
     if (!swap.is_null())
     {
       json colorSet{};
-      int colorIndex = numArgs > 0 ? (*Args[0]).ToInt32() : 0;
-      double colorX = numArgs > 1 ? (*Args[1]).ToDouble() : 0.5;
+      int colorIndex = (*Args[0]).ToInt32();
+      RValue mycol = g_ModuleInterface->CallBuiltin("variable_struct_get", {RValue(Self), RValue("color")});
+      int colcount = g_ModuleInterface->CallBuiltin("array_length", {mycol}).ToInt32();
+      double colorX = g_ModuleInterface->CallBuiltin("array_get", {mycol, RValue(colorIndex % colcount)}).ToDouble();
+
       if (colorX >= 2 && swap["colors2"].is_array())
       {
         colorSet = swap["colors2"];
@@ -218,7 +221,10 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
       if (colorSet.is_array() && colorSet.size() > 0)
       {
         json gradient = colorSet[colorIndex % colorSet.size()];
+        g_ModuleInterface->PrintInfo("COLOR");
+        g_ModuleInterface->PrintInfo(std::to_string(colorX));
         colorX = colorX - (int)colorX;
+        g_ModuleInterface->PrintInfo(std::to_string(colorX));
         if (gradient.is_object())
         {
           if (gradient["array"].is_array())
@@ -250,20 +256,19 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
               break;
             }
           }
-          if (colorA.is_null())
+          g_ModuleInterface->PrintInfo(colorA.dump());
+          g_ModuleInterface->PrintInfo(colorB.dump());
+          if (colorA.is_null() && !colorB.is_null())
           {
-            if (!colorB.is_null())
-            {
-              ReturnValue = RValue(colorB["color"].get<double>());
-              return ReturnValue;
-            }
+            ReturnValue = RValue(colorB["color"].get<double>());
+            return ReturnValue;
           }
-          else if (colorB.is_null())
+          else if (!colorA.is_null() && colorB.is_null())
           {
             ReturnValue = RValue(colorA["color"].get<double>());
             return ReturnValue;
           }
-          else
+          else if (!colorA.is_null() && !colorB.is_null())
           {
             double valueA = colorA["color"].get<double>();
             double xA = colorA["x"].get<double>();
