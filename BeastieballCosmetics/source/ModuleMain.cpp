@@ -79,7 +79,6 @@ bool IsColorsValid(json colors)
 
 RValue AddSprite(json spr_data, std::string id)
 {
-	g_ModuleInterface->PrintInfo(spr_data.dump());
 	if (!spr_data["filename"].is_string())
 	{
 		return RValue();
@@ -100,6 +99,8 @@ RValue AddSprite(json spr_data, std::string id)
 	}
 	int originX = spr_data["origin"][0].get<int>();
 	int originY = spr_data["origin"][1].get<int>();
+
+	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loading Sprites for {}...", id));
 
 	RValue working;
 	g_ModuleInterface->GetBuiltin("program_directory", nullptr, NULL_INDEX, working);
@@ -132,6 +133,8 @@ RValue AddSprite(json spr_data, std::string id)
 		g_ModuleInterface->CallBuiltin("sprite_delete", {frame});
 	}
 
+	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loaded Sprites for {}!", id));
+
 	json json_animations = spr_data["animations"];
 
 	RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
@@ -152,14 +155,14 @@ RValue AddSprite(json spr_data, std::string id)
 
 	if (!impact.ToBoolean())
 	{
-		g_ModuleInterface->PrintInfo("Error Loading Sprite Animations. %s", id);
+		g_ModuleInterface->PrintInfo(std::format("Error Loading Sprite Animations. {}", id));
 		return RValue();
 	}
 	RValue animations = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
 	RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
 	if (!animations.ToBoolean() || !loco.ToBoolean())
 	{
-		g_ModuleInterface->PrintInfo("Error Loading Sprite Animations. %s", id);
+		g_ModuleInterface->PrintInfo(std::format("Error Loading Sprite Animations. {}", id));
 		return RValue();
 	}
 	g_ModuleInterface->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact,
@@ -187,12 +190,12 @@ void AddSwap(json data, std::string FileName)
 		return;
 	}
 	std::string id = data["id"].get<std::string>();
+	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loading {}...", id));
 
 	json sprite = data["sprite"];
 	if (sprite.is_string())
 	{
 		std::string sprName = sprite.get<std::string>();
-		g_ModuleInterface->PrintInfo("sprite %s", sprName);
 		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprName)});
 		swap_sprites[id] = spriteRef;
 
@@ -204,7 +207,6 @@ void AddSwap(json data, std::string FileName)
 	}
 	else
 	{
-		g_ModuleInterface->PrintInfo(sprite.dump());
 		if (!sprite.is_object())
 		{
 			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", FileName);
@@ -238,7 +240,7 @@ void AddSwap(json data, std::string FileName)
 			data[key] = json{};
 		}
 	}
-	g_ModuleInterface->PrintInfo(data.dump());
+	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loaded {}", id));
 	loaded_swaps.push_back(data);
 }
 
@@ -261,7 +263,6 @@ void LoadSwaps()
 			{
 				if (subdir_entry.is_regular_file() && subdir_entry.path().extension() == ".json")
 				{
-					g_ModuleInterface->PrintInfo(subdir_entry.path().string());
 					std::fstream f(subdir_entry.path());
 					json data = json::parse(f);
 					AddSwap(data, subdir_entry.path().filename().string());
