@@ -221,10 +221,7 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
       if (colorSet.is_array() && colorSet.size() > 0)
       {
         json gradient = colorSet[colorIndex % colorSet.size()];
-        g_ModuleInterface->PrintInfo("COLOR");
-        g_ModuleInterface->PrintInfo(std::to_string(colorX));
         colorX = colorX - (int)colorX;
-        g_ModuleInterface->PrintInfo(std::to_string(colorX));
         if (gradient.is_object())
         {
           if (gradient["array"].is_array())
@@ -256,8 +253,6 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
               break;
             }
           }
-          g_ModuleInterface->PrintInfo(colorA.dump());
-          g_ModuleInterface->PrintInfo(colorB.dump());
           if (colorA.is_null() && !colorB.is_null())
           {
             ReturnValue = RValue(colorB["color"].get<double>());
