@@ -83,7 +83,7 @@
           <br />
           colors is used for regular beasties, shiny is used for raremorph beasties, colors2 is used for beasties that have alternate palettes. If you don't define a shiny or colors2 palette it'll default to colors, if colors doesn't exist it'll default to the replaced beastie's usual colors.
           <br />
-          When getting a color past the length of the colorSet it will loop, e.g. trying to get color D when there is only A and B will get color B.
+          When a colorSet only has 2 or less gradients, colors C+ will remain as they are in the original sprite image. if the colorSet has 3 or more gradients then colors past the length will be looped from the start of the gradient e.g. trying to get color E when there is only A, B and C will get color B.
           <br />
           Base beastie palettes can be gotten with the "beastie.colors", "beastie.shiny", and "beastie.colors2" keys. Although they'll have an extra object for gradients. {"array": [gradientcolors]}, which can either be removed or kept and will still work.
         </p>
@@ -96,7 +96,20 @@
     { "color": 255, "x": 0 },
     { "color": 65280, "x": 0.5 },
     { "color": 16711680, "x": 1}
+  ],
+  [
+    { "color": 14090300, "x": 0 },
+    { "color": 12756348, "x": 1 },
   ]
+],
+</pre></p>
+        <p>Example 2 (this will make the sprite appear without any modifications): <pre>"colors": [
+  [
+    { "color": 255, "x": 0 },
+  ],
+  [
+    { "color": 65280, "x": 0.5 },
+  ],
 ],
 </pre></p>
       </div>
