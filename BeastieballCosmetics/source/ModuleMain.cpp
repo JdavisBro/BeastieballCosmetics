@@ -271,6 +271,43 @@ void LoadSwaps()
 	}
 }
 
+std::vector<RValue> delete_sprites;
+
+void UnloadSwaps()
+{
+	for (json swap : loaded_swaps)
+	{
+		std::string id = swap["id"].get<std::string>();
+		RValue sprite = swap_sprites[id];
+		std::string sprite_name = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite}).ToString();
+		if (!sprite_name.starts_with("spr"))
+		{
+			delete_sprites.push_back(sprite);
+		}
+
+		swap_sprites.erase(id);
+		swap_loco.erase(id);
+	}
+
+	loaded_swaps.clear();
+	loaded_swaps.shrink_to_fit();
+}
+
+void DeleteSprites()
+{
+	RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
+	RValue char_anims = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_animations")});
+	for (RValue sprite : delete_sprites)
+	{
+		std::string sprite_name = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite}).ToString();
+		g_ModuleInterface->CallBuiltin("variable_struct_remove", {sprite_beastie_ball_impact, RValue("_" + sprite_name)});
+		g_ModuleInterface->CallBuiltin("ds_map_delete", {char_anims, sprite});
+		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
+	}
+	delete_sprites.clear();
+	delete_sprites.shrink_to_fit();
+}
+
 void FrameCallback(FWFrame &FrameContext)
 {
 	UNREFERENCED_PARAMETER(FrameContext);
@@ -278,9 +315,31 @@ void FrameCallback(FWFrame &FrameContext)
 	AurieStatus last_status = AURIE_SUCCESS;
 
 	static uint32_t frame_counter = 0;
+	static bool reloaded_last_frame = false;
 
 	if (frame_counter > 100)
 	{
+		if (delete_sprites.size())
+		{
+			DeleteSprites();
+		}
+		short ctrl = GetAsyncKeyState(VK_CONTROL);
+		short shift = GetAsyncKeyState(VK_SHIFT);
+		short r = GetAsyncKeyState('R');
+		if (ctrl && shift && r)
+		{
+			if (!reloaded_last_frame)
+			{
+				UnloadSwaps();
+				LoadSwaps();
+				reloaded_last_frame = true;
+			}
+		}
+		else
+		{
+			reloaded_last_frame = false;
+		}
+
 		return;
 	}
 
