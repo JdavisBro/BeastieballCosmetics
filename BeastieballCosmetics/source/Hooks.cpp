@@ -124,29 +124,23 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
   return ReturnValue;
 }
 
-// PFUNC_YYGMLScript shaderMonsterOriginal = nullptr;
-// RValue &ShaderMonsterBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
-// {
-//   RValue beastie = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
-//   if (!beastie.ToBoolean())
-//   {
-//     beastie = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("my_data")});
-//   }
-//   if (beastie.ToBoolean())
-//   {
-//     std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
-//     // g_ModuleInterface->PrintInfo(beastie_name);
-//     if (beastie_name == "Sprecko")
-//     {
-//       RValue chars = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_dic")});
-//       RValue beastie = g_ModuleInterface->CallBuiltin("ds_map_find_value", {chars, RValue("shroom1")});
-//       *Args[0] = beastie;
-//     }
-//   }
-//   shaderMonsterOriginal(Self, Other, ReturnValue, numArgs, Args);
+PFUNC_YYGMLScript shaderMonsterOriginal = nullptr;
+RValue &ShaderMonsterBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
+{
+  RValue beastie = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
+  if (!beastie.ToBoolean())
+  {
+    beastie = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("my_data")});
+  }
+  if (beastie.ToBoolean())
+  {
+    // std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+    *Args[0] = beastie;
+  }
+  shaderMonsterOriginal(Self, Other, ReturnValue, numArgs, Args);
 
-//   return ReturnValue;
-// }
+  return ReturnValue;
+}
 
 static RValue replaceSprite = RValue();
 
@@ -425,7 +419,7 @@ RValue &ActionFrame(CInstance *Self, CInstance *Other, RValue &ReturnValue, int 
 void CreateAllHooks()
 {
   CreateHook("BC CharAnimDraw", "gml_Script_char_animation_draw", CharAnimationDrawBefore, reinterpret_cast<PVOID *>(&charAnimationDrawOriginal));
-  // CreateHook("BC ShaderMonster", "gml_Script_shader_monster", ShaderMonsterBefore, reinterpret_cast<PVOID *>(&shaderMonsterOriginal));
+  CreateHook("BC ShaderMonster", "gml_Script_shader_monster", ShaderMonsterBefore, reinterpret_cast<PVOID *>(&shaderMonsterOriginal));
   CreateHook("BC SpriteAlt", "gml_Script_sprite_alt@anon@14908@class_beastie_template@class_beastie_template", SpriteAlt, reinterpret_cast<PVOID *>(&spriteAltOriginal));
   CreateHook("BC CharAnim", "gml_Script_char_animation", CharAnimationBefore, reinterpret_cast<PVOID *>(&charAnimationOriginal));
   CreateHook("BC GetColor", "gml_Script_get_color@anon@33539@class_beastie_global@class_beastie", GetColorBefore, reinterpret_cast<PVOID *>(&getColorOriginal));
