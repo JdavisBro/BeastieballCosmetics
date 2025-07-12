@@ -266,8 +266,9 @@ void AddSwap(json data, std::string FileName)
 				g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} has beastie {} which doesn't exist", FileName, key, color.get<std::string>()));
 			}
 		}
-		if (!IsColorsValid(data[key]))
+		if (!IsColorsValid(color))
 		{
+			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} invalid format.", FileName, key));
 			data[key] = json{};
 		}
 	}
