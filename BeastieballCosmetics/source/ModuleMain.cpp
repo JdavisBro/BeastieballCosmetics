@@ -296,6 +296,34 @@ void AddSwap(std::filesystem::path path)
 	loaded_swaps.push_back(data);
 }
 
+int GetConditionValue(json condition)
+{
+	if (!condition.is_object())
+	{
+		return 0;
+	}
+	int value = 0;
+	if (condition["specie"].is_string())
+	{
+		value += 1;
+	}
+	if (condition["names"].is_array() && condition["names"].size())
+	{
+		value += 2 + condition["names"].size();
+	}
+	return value;
+}
+
+bool SwapCompare(json const swap1, json const swap2)
+{
+	std::string id1 = swap1["id"].get<std::string>();
+	std::string id2 = swap2["id"].get<std::string>();
+	// should prioritise swaps with more conditions to not be overwritten by swaps with less conditions.
+	int cond1 = GetConditionValue(swap1["condition"]);
+	int cond2 = GetConditionValue(swap2["condition"]);
+	return cond1 != cond2 ? cond1 > cond2 : id1.compare(id2) >= 0;
+}
+
 void LoadSwaps()
 {
 	g_ModuleInterface->Print(CM_LIGHTGREEN, "[BeastieballCosmetics] - Loading Swaps!");
@@ -324,6 +352,7 @@ void LoadSwaps()
 			AddSwap(dir_entry.path());
 		}
 	}
+	std::sort(loaded_swaps.begin(), loaded_swaps.end(), SwapCompare);
 }
 
 std::vector<RValue> delete_sprites;
