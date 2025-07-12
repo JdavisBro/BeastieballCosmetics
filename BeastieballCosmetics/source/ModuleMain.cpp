@@ -46,7 +46,7 @@ std::string color_keys[] = {
 
 bool IsColorsValid(json colors)
 {
-	if (!colors.is_array())
+	if (!colors.is_array() || !colors.size())
 	{
 		return false;
 	}
@@ -63,6 +63,10 @@ bool IsColorsValid(json colors)
 			{
 				return false;
 			}
+		}
+		if (!gradient.size())
+		{
+			return false;
 		}
 		for (int colorNum = 0; colorNum < gradient.size(); colorNum++)
 		{
