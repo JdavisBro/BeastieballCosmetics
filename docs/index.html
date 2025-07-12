@@ -63,7 +63,7 @@
           <h3>origin</h3>
           Array with 2 numbers. X origin, Y origin. Bottom middle of the beastie, where it meets the floor.
           <h3>animations</h3>
-          Currently only accepts a string with a beastie's sprite name and copies their animation, see string explanation above.
+          Currently accepts a string with a beastie's sprite name, and copies their animation, or accepts custom animations in the same format as in the beastie_data file.
         </p>
         <p>Example: <pre>"sprite": {
   "filename": "spreckoHat/{}.png",
@@ -80,8 +80,11 @@
           Each of these variables contain a colorSet, which has different gradients for each color part of a beastie: A, B, C, D, E, F.
           <br />
           A colorSet is an array, which contains arrays (gradients) which contain gradient colors. Gradient colors have a "color" which is a GML color decimal (BGR instead of RGB) which can be made easily <a href="https://data.chicory.pizza/palette" target="_blank">here</a>. And an X value, which is the position along the gradient from 0 to 1.
+          <br />colors is used for regular beasties, or raremorph and alternate beasties if those colorSets don't exist.
+          <br />shiny is used for raremorph beasties, or regular and alternate beasties if those colorSets dont exist.
+          <br />colors2 is used for beasties that have alternate palettes, or regular and raremorph beasties if those colorSets dont exist.
           <br />
-          colors is used for regular beasties, shiny is used for raremorph beasties, colors2 is used for beasties that have alternate palettes. If you don't define a shiny or colors2 palette it'll default to colors, if colors doesn't exist it'll default to the replaced beastie's usual colors.
+          If none of those exist in the swap, the beastie will use their regular colors.
           <br />
           When a colorSet only has 2 or less gradients, colors C+ will remain as they are in the original sprite image. if the colorSet has 3 or more gradients then colors past the length will be looped from the start of the gradient e.g. trying to get color E when there is only A, B and C will get color B.
           <br />
