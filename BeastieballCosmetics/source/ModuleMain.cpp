@@ -303,6 +303,10 @@ void UnloadSwaps()
 	for (json swap : loaded_swaps)
 	{
 		std::string id = swap["id"].get<std::string>();
+		if (!swap_sprites.contains(id))
+		{
+			continue;
+		}
 		RValue sprite = swap_sprites[id];
 		std::string sprite_name = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite}).ToString();
 		if (!sprite_name.starts_with("spr"))
