@@ -218,6 +218,13 @@ void AddSwap(json data, std::string FileName)
 			return;
 		}
 		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
+		RValue char_anims = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_animations")});
+		RValue char_anims_sprite = g_ModuleInterface->CallBuiltin("ds_map_get", {char_anims, spriteRef});
+		if (!char_anims_sprite.ToBoolean()) // some beastie sprites (alt sprites like sprRat_alt) aren't in char_animations
+		{
+			RValue animations = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
+			g_ModuleInterface->CallBuiltin("ds_map_set", {char_anims, spriteRef, animations});
+		}
 
 		swap_sprites[id] = spriteRef;
 		swap_loco[id] = loco;
