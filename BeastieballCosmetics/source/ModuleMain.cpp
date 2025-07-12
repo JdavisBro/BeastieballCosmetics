@@ -114,6 +114,11 @@ RValue AddSprite(json spr_data, std::string id)
 	g_ModuleInterface->GetBuiltin("program_directory", nullptr, NULL_INDEX, working);
 
 	std::string path = working.ToString() + "mods/Aurie/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
+	if (!std::filesystem::exists(path) || std::filesystem::is_regular_file(path))
+	{
+		g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
+		return RValue();
+	}
 	RValue sprite = g_ModuleInterface->CallBuiltin("sprite_add", {
 																																	 RValue(path),
 																																	 RValue(1),
@@ -129,6 +134,12 @@ RValue AddSprite(json spr_data, std::string id)
 	for (int i = 1; i < file_count; i++)
 	{
 		path = working.ToString() + "mods/Aurie/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
+		if (!std::filesystem::exists(path) || std::filesystem::is_regular_file(path))
+		{
+			g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
+			g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
+			return RValue();
+		}
 		RValue frame = g_ModuleInterface->CallBuiltin("sprite_add", {
 																																		RValue(path),
 																																		RValue(1),
@@ -164,6 +175,7 @@ RValue AddSprite(json spr_data, std::string id)
 	if (!impact.ToBoolean())
 	{
 		g_ModuleInterface->PrintInfo(std::format("Error Loading Sprite Animations. {}", id));
+		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
 	RValue animations = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
@@ -171,6 +183,7 @@ RValue AddSprite(json spr_data, std::string id)
 	if (!animations.ToBoolean() || !loco.ToBoolean())
 	{
 		g_ModuleInterface->PrintInfo(std::format("Error Loading Sprite Animations. {}", id));
+		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
 	g_ModuleInterface->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact,
