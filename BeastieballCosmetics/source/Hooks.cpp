@@ -214,15 +214,18 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
       int colcount = g_ModuleInterface->CallBuiltin("array_length", {mycol}).ToInt32();
       double colorX = g_ModuleInterface->CallBuiltin("array_get", {mycol, RValue(colorIndex % colcount)}).ToDouble();
 
-      if (colorX >= 2 && swap["colors2"].is_array())
+      bool colors2exists = swap["colors2"].is_array();
+      bool shinyexists = swap["shiny"].is_array();
+      bool colorsexists = swap["colors"].is_array();
+      if ((colorX >= 2 || (!shinyexists && !colorsexists)) && colors2exists)
       {
         colorSet = swap["colors2"];
       }
-      else if (colorX > 1 && swap["shiny"].is_array())
+      else if ((colorX > 1 || !colorsexists) && shinyexists)
       {
         colorSet = swap["shiny"];
       }
-      else if (swap["colors"].is_array())
+      else if (colorsexists)
       {
         colorSet = swap["colors"];
       }
