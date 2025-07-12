@@ -273,7 +273,7 @@ void AddSwap(std::filesystem::path path)
 				g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} has beastie {} which doesn't exist", fileName, key, color.get<std::string>()));
 			}
 		}
-		if (!IsColorsValid(color))
+		if (!IsColorsValid(data[key]))
 		{
 			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} invalid format.", fileName, key));
 			data[key] = json{};
