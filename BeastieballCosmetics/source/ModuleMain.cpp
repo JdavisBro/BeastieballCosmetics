@@ -182,19 +182,22 @@ RValue AddSprite(json spr_data, std::string id)
 	return sprite;
 }
 
-void AddSwap(json data, std::string FileName)
+void AddSwap(std::filesystem::path path)
 {
+	std::string fileName = path.stem().string();
+	std::fstream f(path);
+	json data = json::parse(f);
 	for (std::string key : required_keys)
 	{
 		if (!data.contains(key))
 		{
-			g_ModuleInterface->PrintWarning("Error Loading %s - Missing Key %s", FileName, key);
+			g_ModuleInterface->PrintWarning("Error Loading %s - Missing Key %s", fileName, key);
 			return;
 		}
 	}
 	if (!data["id"].is_string())
 	{
-		g_ModuleInterface->PrintWarning("Error Loading %s", FileName);
+		g_ModuleInterface->PrintWarning("Error Loading %s", fileName);
 		return;
 	}
 	std::string id = data["id"].get<std::string>();
@@ -210,7 +213,7 @@ void AddSwap(json data, std::string FileName)
 		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprName)});
 		if (!spriteRef.ToBoolean())
 		{
-			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Invalid Sprite Name {}", FileName, sprName));
+			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Invalid Sprite Name {}", fileName, sprName));
 			return;
 		}
 
@@ -218,7 +221,7 @@ void AddSwap(json data, std::string FileName)
 		RValue impact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
 		if (!impact.ToBoolean())
 		{
-			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Sprite {} has no Beastie anims", FileName, sprName));
+			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Sprite {} has no Beastie anims", fileName, sprName));
 			return;
 		}
 		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
@@ -237,13 +240,13 @@ void AddSwap(json data, std::string FileName)
 	{
 		if (!sprite.is_object())
 		{
-			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", FileName);
+			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", fileName);
 			return;
 		}
 		RValue spriteRef = AddSprite(sprite, id);
 		if (!spriteRef.ToBoolean())
 		{
-			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", FileName);
+			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", fileName);
 			return;
 		}
 		swap_sprites[id] = spriteRef;
@@ -267,12 +270,12 @@ void AddSwap(json data, std::string FileName)
 			}
 			else
 			{
-				g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} has beastie {} which doesn't exist", FileName, key, color.get<std::string>()));
+				g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} has beastie {} which doesn't exist", fileName, key, color.get<std::string>()));
 			}
 		}
 		if (!IsColorsValid(color))
 		{
-			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} invalid format.", FileName, key));
+			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} invalid format.", fileName, key));
 			data[key] = json{};
 		}
 	}
@@ -299,11 +302,13 @@ void LoadSwaps()
 			{
 				if (subdir_entry.is_regular_file() && subdir_entry.path().extension() == ".json")
 				{
-					std::fstream f(subdir_entry.path());
-					json data = json::parse(f);
-					AddSwap(data, subdir_entry.path().filename().string());
+					AddSwap(subdir_entry.path());
 				}
 			}
+		}
+		else if (dir_entry.is_regular_file() && dir_entry.path().extension() == ".json")
+		{
+			AddSwap(dir_entry.path());
 		}
 	}
 }
