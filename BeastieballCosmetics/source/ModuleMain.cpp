@@ -46,6 +46,10 @@ std::string color_keys[] = {
 
 bool IsColorsValid(json colors)
 {
+	if (!colors.is_array())
+	{
+		return false;
+	}
 	for (int gradientNum = 0; gradientNum < colors.size(); gradientNum++)
 	{
 		json gradient = colors[gradientNum];
@@ -200,11 +204,22 @@ void AddSwap(json data, std::string FileName)
 	{
 		std::string sprName = sprite.get<std::string>();
 		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprName)});
-		swap_sprites[id] = spriteRef;
+		if (!spriteRef.ToBoolean())
+		{
+			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Invalid Sprite Name {}", FileName, sprName));
+			return;
+		}
 
 		RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
-		RValue oldImpact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
-		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {oldImpact, RValue("loco_data")});
+		RValue impact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
+		if (!impact.ToBoolean())
+		{
+			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Sprite {} has no Beastie anims", FileName, sprName));
+			return;
+		}
+		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
+
+		swap_sprites[id] = spriteRef;
 		swap_loco[id] = loco;
 	}
 	else
@@ -234,10 +249,17 @@ void AddSwap(json data, std::string FileName)
 		if (color.is_string())
 		{
 			RValue beastie = g_ModuleInterface->CallBuiltin("ds_map_find_value", {char_dic, RValue(color.get<std::string>())});
-			RValue coldata = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue(key)});
-			data[key] = json::parse(g_ModuleInterface->CallBuiltin("json_stringify", {coldata}).ToString());
+			if (beastie.ToBoolean())
+			{
+				RValue coldata = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue(key)});
+				data[key] = json::parse(g_ModuleInterface->CallBuiltin("json_stringify", {coldata}).ToString());
+			}
+			else
+			{
+				g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} has beastie {} which doesn't exist", FileName, key, color.get<std::string>()));
+			}
 		}
-		if (!data[key].is_array() || !IsColorsValid(data[key]))
+		if (!IsColorsValid(data[key]))
 		{
 			data[key] = json{};
 		}
