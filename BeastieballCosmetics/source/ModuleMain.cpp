@@ -309,7 +309,7 @@ int GetConditionValue(json condition)
 	}
 	if (condition["names"].is_array() && condition["names"].size())
 	{
-		value += 2 + condition["names"].size();
+		value += 2 + (int)condition["names"].size();
 	}
 	return value;
 }
