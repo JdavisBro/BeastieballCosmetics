@@ -193,13 +193,15 @@ void AddSwap(json data, std::string FileName)
 	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loading {}...", id));
 
 	json sprite = data["sprite"];
-	if (sprite.is_string())
+	if (sprite.is_null())
+	{
+	}
+	else if (sprite.is_string())
 	{
 		std::string sprName = sprite.get<std::string>();
 		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprName)});
 		swap_sprites[id] = spriteRef;
 
-		// loco
 		RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
 		RValue oldImpact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
 		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {oldImpact, RValue("loco_data")});

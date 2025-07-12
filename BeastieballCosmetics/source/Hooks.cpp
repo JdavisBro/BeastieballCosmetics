@@ -31,10 +31,14 @@ void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction
   }
 }
 
-json MatchSwaps(std::string BeastieId, std::string BeastieName)
+json MatchSwaps(std::string BeastieId, std::string BeastieName, bool MustHaveSprite)
 {
   for (auto swap : loaded_swaps)
   {
+    if (MustHaveSprite && swap["sprite"].is_null())
+    {
+      continue;
+    }
     json specie = swap["condition"]["specie"];
     if (specie.is_string())
     {
@@ -79,7 +83,7 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
     std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
     std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name);
+    json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
     {
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
@@ -149,7 +153,7 @@ RValue &SpriteAlt(CInstance *Self, CInstance *Other, RValue &ReturnValue, int nu
     std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
     std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name);
+    json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
     {
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
@@ -174,7 +178,7 @@ RValue &CharAnimationBefore(CInstance *Self, CInstance *Other, RValue &ReturnVal
     std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
     std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name);
+    json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
     {
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
@@ -197,7 +201,7 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
   std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("name")}).ToString();
   try
   {
-    json swap = MatchSwaps(beastie_id, beastie_name);
+    json swap = MatchSwaps(beastie_id, beastie_name, false);
     if (!swap.is_null())
     {
       json colorSet{};
@@ -294,10 +298,11 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
 {
   std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("specie")}).ToString();
   std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("name")}).ToString();
-  json swap = MatchSwaps(beastie_id, beastie_name);
+  json swap = MatchSwaps(beastie_id, beastie_name, false);
   if (!swap.is_null())
   {
-    if (setActionFrame)
+    // this is called directly after the actionframe's sprite_index is set, i overwrite it here only during an ActionFrame call.
+    if (setActionFrame && !swap["sprite"].is_null())
     {
       RValue objActionframe = g_ModuleInterface->CallBuiltin("asset_get_index", {"objActionframe"});
       int actionFrameCount = g_ModuleInterface->CallBuiltin("instance_number", {objActionframe}).ToInt32();
@@ -305,7 +310,7 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
       for (int i = 0; i < actionFrameCount; i++)
       {
         actionFrame = g_ModuleInterface->CallBuiltin("instance_find", {objActionframe, RValue(i)});
-        if (g_ModuleInterface->CallBuiltin("variable_instance_get", {actionFrame, RValue("time")}).ToInt32() < 0)
+        if (g_ModuleInterface->CallBuiltin("variable_instance_get", {actionFrame, RValue("time")}).ToInt32() < 0) // new ActionFrame have time = -1
         {
           break;
         }
@@ -347,7 +352,7 @@ RValue &DrawMonsterMenu(CInstance *Self, CInstance *Other, RValue &ReturnValue, 
   std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
   std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
 
-  json swap = MatchSwaps(beastie_id, beastie_name);
+  json swap = MatchSwaps(beastie_id, beastie_name, true);
   if (!swap.is_null())
   {
     RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
@@ -384,7 +389,7 @@ RValue &Sprite(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numAr
     std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
     std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name);
+    json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
     {
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
@@ -419,7 +424,7 @@ RValue &LocomoteBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
     std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
     std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name);
+    json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
     {
       RValue swap_loc = swap_loco[swap["id"].get<std::string>()];
