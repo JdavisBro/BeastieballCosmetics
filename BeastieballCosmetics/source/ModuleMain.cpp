@@ -40,7 +40,7 @@ std::map<std::string, RValue> swap_sprites;
 std::map<std::string, RValue> swap_loco;
 
 std::string required_keys[] = {
-		"type", "sprite", "condition", "id"};
+		"type", "id"};
 std::string color_keys[] = {
 		"colors", "shiny", "colors2"};
 

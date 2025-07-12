@@ -39,6 +39,10 @@ json MatchSwaps(std::string BeastieId, std::string BeastieName, bool MustHaveSpr
     {
       continue;
     }
+    if (!swap["condition"].is_object())
+    {
+      return swap;
+    }
     json specie = swap["condition"]["specie"];
     if (specie.is_string())
     {
