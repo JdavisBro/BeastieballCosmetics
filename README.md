@@ -16,7 +16,7 @@ Now when you run the game (either by openning the exe, through Steam, or clickin
 
 ## Adding Swaps
 
-Beastie sprite swaps are stored in `mods/Aurie/BeastieballCosmetics` (from beastieball.exe). JSON files are searched for in that directory, and subdirs of that directory. So `BeastieballCosmetics/example.json` and `BeastieballCosmetics/examples/example.json` would be loaded, but `BeastieballCosmetics/example/example1/example.json` would not.
+Beastie sprite swaps are stored in `mod_data/BeastieballCosmetics` (from beastieball.exe). JSON files are searched for in that directory, and subdirs of that directory. So `BeastieballCosmetics/example.json` and `BeastieballCosmetics/examples/example.json` would be loaded, but `BeastieballCosmetics/example/example1/example.json` would not.
 
 Example BeastieCosmetics dir:
 

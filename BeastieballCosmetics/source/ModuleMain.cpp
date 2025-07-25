@@ -332,8 +332,8 @@ void LoadSwaps()
 	AurieStatus last_status = GetScript("gml_Script_ElephantFromJSON", script);
 	elephantFromJson = script->m_Functions->m_ScriptFunction;
 
-	std::filesystem::path dir = {"mods"};
-	dir = dir / "Aurie" / "BeastieballCosmetics";
+	std::filesystem::path dir = {"mod_data"};
+	dir = dir / "BeastieballCosmetics";
 	std::filesystem::create_directories(dir);
 	for (auto const &dir_entry : std::filesystem::directory_iterator(dir))
 	{
