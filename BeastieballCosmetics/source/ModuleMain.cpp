@@ -113,7 +113,7 @@ RValue AddSprite(json spr_data, std::string id)
 	RValue working;
 	g_ModuleInterface->GetBuiltin("program_directory", nullptr, NULL_INDEX, working);
 
-	std::string path = working.ToString() + "mods/Aurie/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
+	std::string path = working.ToString() + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 	{
 		g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
@@ -133,7 +133,7 @@ RValue AddSprite(json spr_data, std::string id)
 
 	for (int i = 1; i < file_count; i++)
 	{
-		path = working.ToString() + "mods/Aurie/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
+		path = working.ToString() + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
 		if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 		{
 			g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
