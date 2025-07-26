@@ -87,6 +87,7 @@ bool IsColorsValid(json colors)
 
 RValue AddSprite(json spr_data, std::string id)
 {
+	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loading Sprites for {}...", id));
 	if (!spr_data["filename"].is_string())
 	{
 		return RValue();
@@ -97,18 +98,13 @@ RValue AddSprite(json spr_data, std::string id)
 		return RValue();
 	}
 	int file_count = spr_data["count"].get<int>();
-	if (!spr_data["origin"].is_array())
+	int originX = 484;
+	int originY = 989;
+	if (spr_data["origin"].is_array() && spr_data["origin"][0].is_number() && spr_data["origin"][1].is_number())
 	{
-		return RValue();
+		originX = spr_data["origin"][0].get<int>();
+		originY = spr_data["origin"][1].get<int>();
 	}
-	if (!spr_data["origin"][0].is_number() || !spr_data["origin"][1].is_number())
-	{
-		return RValue();
-	}
-	int originX = spr_data["origin"][0].get<int>();
-	int originY = spr_data["origin"][1].get<int>();
-
-	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loading Sprites for {}...", id));
 
 	RValue working;
 	g_ModuleInterface->GetBuiltin("program_directory", nullptr, NULL_INDEX, working);
@@ -124,8 +120,8 @@ RValue AddSprite(json spr_data, std::string id)
 																																	 RValue(1),
 																																	 RValue(false),
 																																	 RValue(false),
-																																	 RValue(484),
-																																	 RValue(989),
+																																	 RValue(originX),
+																																	 RValue(originY),
 																															 });
 
 	std::string spriteStr = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite})
@@ -145,8 +141,8 @@ RValue AddSprite(json spr_data, std::string id)
 																																		RValue(1),
 																																		RValue(false),
 																																		RValue(false),
-																																		RValue(484),
-																																		RValue(989),
+																																		RValue(originX),
+																																		RValue(originY),
 																																});
 		g_ModuleInterface->CallBuiltin("sprite_merge", {sprite, frame});
 		g_ModuleInterface->CallBuiltin("sprite_delete", {frame});
