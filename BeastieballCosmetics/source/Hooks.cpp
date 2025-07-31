@@ -306,6 +306,8 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
   std::string beastie_id = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("specie")}).ToString();
   std::string beastie_name = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("name")}).ToString();
   json swap = MatchSwaps(beastie_id, beastie_name, false);
+  getColorNumOriginal(Self, Other, ReturnValue, numArgs, Args);
+  size_t gameCount = ReturnValue.ToInt32();
   if (!swap.is_null())
   {
     // this is called directly after the actionframe's sprite_index is set, i overwrite it here only during an ActionFrame call.
@@ -332,13 +334,12 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
     size_t numCol2 = swap["colors2"].is_array() ? swap["colors2"].size() : 0;
     size_t numShiny = swap["shiny"].is_array() ? swap["shiny"].size() : 0;
     size_t maxNum = max(numCol, max(numCol2, numShiny));
-    if (maxNum > 0)
+    if (maxNum > 0 && maxNum > gameCount)
     {
       ReturnValue = RValue(maxNum);
       return ReturnValue;
     }
   }
-  getColorNumOriginal(Self, Other, ReturnValue, numArgs, Args);
 
   return ReturnValue;
 }
@@ -420,7 +421,6 @@ RValue &ActionFrame(CInstance *Self, CInstance *Other, RValue &ReturnValue, int 
 PFUNC_YYGMLScript locomoteOriginal = nullptr;
 RValue &LocomoteBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
-  bool update_sprite = false;
   RValue beastie = g_ModuleInterface->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
   if (!beastie.ToBoolean())
   {
