@@ -9,15 +9,78 @@ using json = nlohmann::json;
 using namespace Aurie;
 using namespace YYTK;
 
+struct NameCheck
+{
+  const char *pre;
+  const char *post;
+};
+
+std::map<std::string, CScript *> found_scripts;
+
+void FindScripts()
+{
+  std::vector<NameCheck>
+      lost_scripts = {
+          {NULL, "gml_Script_char_animation_draw"},
+          {NULL, "gml_Script_shader_monster"},
+          {"gml_Script_sprite_alt@", "class_beastie_template"},
+          {NULL, "gml_Script_char_animation"},
+          {"gml_Script_get_color@", "class_beastie"},
+          {"gml_Script_get_color_num@", "class_beastie"},
+          {NULL, "gml_Script_draw_monster_menu"},
+          {"gml_Script_sprite@", "class_beastie_template"},
+          {NULL, "gml_Script_ActionFrame"},
+          {NULL, "gml_Script_locomote"},
+      };
+
+  AurieStatus last_status = AURIE_SUCCESS;
+  CScript *script = nullptr;
+  int i = 0;
+  while (true)
+  {
+    last_status = g_ModuleInterface->GetScriptData(i, script);
+    if (last_status != AURIE_SUCCESS)
+    {
+      if (last_status != AURIE_OBJECT_NOT_FOUND)
+      {
+        g_ModuleInterface->PrintWarning(AurieStatusToString(last_status));
+      }
+      break;
+    }
+    std::string script_name = script->GetName();
+    for (size_t lost_i = 0; lost_i < lost_scripts.size(); lost_i++)
+    {
+      NameCheck name_check = lost_scripts[lost_i];
+      if (script_name.ends_with(name_check.post) && (name_check.pre == NULL || script_name.starts_with(name_check.pre)))
+      {
+        std::string combined_name = std::string(name_check.pre == NULL ? "" : name_check.pre) + name_check.post;
+        found_scripts[combined_name] = script;
+        lost_scripts.erase(lost_scripts.begin() + lost_i);
+        break;
+      }
+    }
+    i++;
+  }
+  if (!lost_scripts.empty())
+  {
+    for (NameCheck name_check : lost_scripts)
+    {
+      g_ModuleInterface->PrintWarning(std::format("Unable to find script for {}{}", name_check.pre == NULL ? "" : name_check.pre, name_check.post));
+    }
+  }
+}
+
+bool hook_failed = false;
+
 void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction, PVOID *Trampoline)
 {
   AurieStatus last_status = AURIE_SUCCESS;
-  CScript *script = nullptr;
-  last_status = GetScript(FunctionName, script);
-  if (!AurieSuccess(last_status))
+  if (!found_scripts.contains(FunctionName))
   {
+    hook_failed = true;
     return;
   }
+  CScript *script = found_scripts[FunctionName];
   last_status = MmCreateHook(
       g_ArSelfModule,
       HookId,
@@ -26,6 +89,7 @@ void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction
       Trampoline);
   if (!AurieSuccess(last_status))
   {
+    hook_failed = true;
     g_ModuleInterface->PrintWarning("Failed to create hook for %s", FunctionName);
     return;
   }
@@ -445,17 +509,28 @@ RValue &LocomoteBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
 
 void CreateAllHooks()
 {
+  FindScripts();
+
   CreateHook("BC CharAnimDraw", "gml_Script_char_animation_draw", CharAnimationDrawBefore, reinterpret_cast<PVOID *>(&charAnimationDrawOriginal));
   CreateHook("BC ShaderMonster", "gml_Script_shader_monster", ShaderMonsterBefore, reinterpret_cast<PVOID *>(&shaderMonsterOriginal));
-  CreateHook("BC SpriteAlt", "gml_Script_sprite_alt@anon@14855@class_beastie_template@class_beastie_template", SpriteAlt, reinterpret_cast<PVOID *>(&spriteAltOriginal));
+  CreateHook("BC SpriteAlt", "gml_Script_sprite_alt@class_beastie_template", SpriteAlt, reinterpret_cast<PVOID *>(&spriteAltOriginal));
   CreateHook("BC CharAnim", "gml_Script_char_animation", CharAnimationBefore, reinterpret_cast<PVOID *>(&charAnimationOriginal));
-  CreateHook("BC GetColor", "gml_Script_get_color@anon@33539@class_beastie_global@class_beastie", GetColorBefore, reinterpret_cast<PVOID *>(&getColorOriginal));
-  CreateHook("BC GetColorNum", "gml_Script_get_color_num@anon@32936@class_beastie_global@class_beastie", GetColorNumBefore, reinterpret_cast<PVOID *>(&getColorNumOriginal));
+  CreateHook("BC GetColor", "gml_Script_get_color@class_beastie", GetColorBefore, reinterpret_cast<PVOID *>(&getColorOriginal));
+  CreateHook("BC GetColorNum", "gml_Script_get_color_num@class_beastie", GetColorNumBefore, reinterpret_cast<PVOID *>(&getColorNumOriginal));
 
   CreateHook("BC DrawMonsterMenu", "gml_Script_draw_monster_menu", DrawMonsterMenu, reinterpret_cast<PVOID *>(&drawMonsterMenuOriginal));
-  CreateHook("BC Sprite", "gml_Script_sprite@anon@14798@class_beastie_template@class_beastie_template", Sprite, reinterpret_cast<PVOID *>(&spriteOriginal));
+  CreateHook("BC Sprite", "gml_Script_sprite@class_beastie_template", Sprite, reinterpret_cast<PVOID *>(&spriteOriginal));
 
   CreateHook("BC ActionFrame", "gml_Script_ActionFrame", ActionFrame, reinterpret_cast<PVOID *>(&actionFrameOriginal));
 
   CreateHook("BC Locomote", "gml_Script_locomote", LocomoteBefore, reinterpret_cast<PVOID *>(&locomoteOriginal));
+
+  if (hook_failed)
+  {
+    g_ModuleInterface->Print(CM_RED, "[BeastieballCosmetics] - A Hook Failed...");
+  }
+  else
+  {
+    g_ModuleInterface->Print(CM_GREEN, "[BeastieballCosmetics] - All Hooks are Successful!");
+  }
 }
