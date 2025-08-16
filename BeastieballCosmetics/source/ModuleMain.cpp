@@ -105,11 +105,13 @@ RValue AddSprite(json spr_data, std::string id)
 		originX = spr_data["origin"][0].get<int>();
 		originY = spr_data["origin"][1].get<int>();
 	}
+	bool strip = spr_data["strip"].is_boolean() ? spr_data["strip"].get<bool>() : false;
 
-	RValue working;
-	g_ModuleInterface->GetBuiltin("program_directory", nullptr, NULL_INDEX, working);
+	RValue working_rvalue;
+	g_ModuleInterface->GetBuiltin("program_directory", nullptr, NULL_INDEX, working_rvalue);
+	std::string working = working_rvalue.ToString();
 
-	std::string path = working.ToString() + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
+	std::string path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 	{
 		g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
@@ -117,7 +119,7 @@ RValue AddSprite(json spr_data, std::string id)
 	}
 	RValue sprite = g_ModuleInterface->CallBuiltin("sprite_add", {
 																																	 RValue(path),
-																																	 RValue(1),
+																																	 RValue(strip ? file_count : 1),
 																																	 RValue(false),
 																																	 RValue(false),
 																																	 RValue(originX),
@@ -127,25 +129,28 @@ RValue AddSprite(json spr_data, std::string id)
 	std::string spriteStr = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite})
 															.ToString();
 
-	for (int i = 1; i < file_count; i++)
+	if (!strip)
 	{
-		path = working.ToString() + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
-		if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
+		for (int i = 1; i < file_count; i++)
 		{
-			g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
-			g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
-			return RValue();
+			path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
+			if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
+			{
+				g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
+				g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
+				return RValue();
+			}
+			RValue frame = g_ModuleInterface->CallBuiltin("sprite_add", {
+																																			RValue(path),
+																																			RValue(1),
+																																			RValue(false),
+																																			RValue(false),
+																																			RValue(originX),
+																																			RValue(originY),
+																																	});
+			g_ModuleInterface->CallBuiltin("sprite_merge", {sprite, frame});
+			g_ModuleInterface->CallBuiltin("sprite_delete", {frame});
 		}
-		RValue frame = g_ModuleInterface->CallBuiltin("sprite_add", {
-																																		RValue(path),
-																																		RValue(1),
-																																		RValue(false),
-																																		RValue(false),
-																																		RValue(originX),
-																																		RValue(originY),
-																																});
-		g_ModuleInterface->CallBuiltin("sprite_merge", {sprite, frame});
-		g_ModuleInterface->CallBuiltin("sprite_delete", {frame});
 	}
 
 	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loaded Sprites for {}!", id));
