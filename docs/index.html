@@ -58,6 +58,8 @@
           When using an object and loading sprites, sprites should be 1000 x 1000
           <h3>filename</h3>
           Template filename formatted using C++ std::format. {} will be replaced with the number of sprite being added, e.g. "{}.png" becomes "0.png", "10.png" and "{:02}.png" becomes "00.png", "10.png". This path is from the BeastieballCosmetics directory, so add your subdir to it e.g. "spreckoHat/{}.png".
+          <h3>strip</h3>
+          Boolean: whether it is a strip or not. If it is true, instead of loading multiple images, loads image 0 as a strip where each frame is 1000 pixels wide. This is faster than loading each frame individual but harder to work with, generally only really needed at high frame counts.
           <h3>count</h3>
           Count of images, images will be added starting at 0 and ending at this - 1, so a value of 36 would add 0 through 35.
           <h3>origin</h3>
