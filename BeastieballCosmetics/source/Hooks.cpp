@@ -43,7 +43,7 @@ void FindScripts()
     {
       if (last_status != AURIE_OBJECT_NOT_FOUND)
       {
-        g_ModuleInterface->PrintWarning(AurieStatusToString(last_status));
+        DbgPrintEx(LOG_SEVERITY_WARNING, AurieStatusToString(last_status));
       }
       break;
     }
@@ -65,7 +65,7 @@ void FindScripts()
   {
     for (NameCheck name_check : lost_scripts)
     {
-      g_ModuleInterface->PrintWarning(std::format("Unable to find script for {}{}", name_check.pre == NULL ? "" : name_check.pre, name_check.post));
+      DbgPrintEx(LOG_SEVERITY_WARNING, "Unable to find script for %s%s", name_check.pre == NULL ? "" : name_check.pre, name_check.post);
     }
   }
 }
@@ -90,7 +90,7 @@ void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction
   if (!AurieSuccess(last_status))
   {
     hook_failed = true;
-    g_ModuleInterface->PrintWarning("Failed to create hook for %s", FunctionName);
+    DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to create hook for %s", FunctionName);
     return;
   }
 }
@@ -199,15 +199,15 @@ RValue &ShaderMonsterBefore(CInstance *Self, CInstance *Other, RValue &ReturnVal
   return ReturnValue;
 }
 
-static RValue replaceSprite = RValue();
+static RValue *replaceSprite = nullptr;
 
 PFUNC_YYGMLScript spriteAltOriginal = nullptr;
 RValue &SpriteAlt(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
   spriteAltOriginal(Self, Other, ReturnValue, numArgs, Args);
-  if (replaceSprite.ToBoolean())
+  if (replaceSprite && replaceSprite->ToBoolean())
   {
-    ReturnValue = replaceSprite;
+    ReturnValue = *replaceSprite;
     return ReturnValue;
   }
 
@@ -227,7 +227,7 @@ RValue &SpriteAlt(CInstance *Self, CInstance *Other, RValue &ReturnValue, int nu
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
       ReturnValue = swap_sprite;
     }
-    // g_ModuleInterface->PrintInfo("%s: %s", beastie_name, ReturnValue.ToString());
+    // DbgPrintEx(LOG_SEVERITY_INFO,"%s: %s", beastie_name, ReturnValue.ToString());
   }
 
   return ReturnValue;
@@ -355,7 +355,7 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
   }
   catch (json::exception &e)
   {
-    g_ModuleInterface->PrintInfo(e.what());
+    DbgPrintEx(LOG_SEVERITY_INFO, e.what());
   }
   getColorOriginal(Self, Other, ReturnValue, numArgs, Args);
 
@@ -428,7 +428,7 @@ RValue &DrawMonsterMenu(CInstance *Self, CInstance *Other, RValue &ReturnValue, 
   if (!swap.is_null())
   {
     RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-    replaceSprite = swap_sprite;
+    replaceSprite = &swap_sprite;
     // double new_scale = GetSpriteScale(swap_sprite); // atempt to fix menu beasties being too big
     // RValue char_dic = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_dic")});
     // RValue current_beastie = g_ModuleInterface->CallBuiltin("ds_map_find_value", {char_dic, RValue(beastie_id)});
@@ -437,7 +437,7 @@ RValue &DrawMonsterMenu(CInstance *Self, CInstance *Other, RValue &ReturnValue, 
     // *Args[3] = RValue(scale * (new_scale / old_scale));
   }
   drawMonsterMenuOriginal(Self, Other, ReturnValue, numArgs, Args);
-  replaceSprite = RValue();
+  replaceSprite = nullptr;
   return ReturnValue;
 }
 
@@ -445,9 +445,9 @@ PFUNC_YYGMLScript spriteOriginal = nullptr;
 RValue &Sprite(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
   spriteOriginal(Self, Other, ReturnValue, numArgs, Args);
-  if (replaceSprite.ToBoolean())
+  if (replaceSprite && replaceSprite->ToBoolean())
   {
-    ReturnValue = replaceSprite;
+    ReturnValue = *replaceSprite;
     return ReturnValue;
   }
 
@@ -467,7 +467,7 @@ RValue &Sprite(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numAr
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
       ReturnValue = swap_sprite;
     }
-    // g_ModuleInterface->PrintInfo("%s: %s", beastie_name, ReturnValue.ToString());
+    // DbgPrintEx(LOG_SEVERITY_INFO,"%s: %s", beastie_name, ReturnValue.ToString());
   }
 
   return ReturnValue;
@@ -527,10 +527,10 @@ void CreateAllHooks()
 
   if (hook_failed)
   {
-    g_ModuleInterface->Print(CM_RED, "[BeastieballCosmetics] - A Hook Failed...");
+    DbgPrintEx(LOG_SEVERITY_ERROR, "[BeastieballCosmetics] - A Hook Failed...");
   }
   else
   {
-    g_ModuleInterface->Print(CM_GREEN, "[BeastieballCosmetics] - All Hooks are Successful!");
+    DbgPrintEx(LOG_SEVERITY_DEBUG, "[BeastieballCosmetics] - All Hooks are Successful!");
   }
 }

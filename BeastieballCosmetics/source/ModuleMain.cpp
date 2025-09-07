@@ -22,13 +22,13 @@ AurieStatus GetScript(std::string FunctionName, CScript *&script)
 	last_status = g_ModuleInterface->GetNamedRoutineIndex(FunctionName.c_str(), &index);
 	if (!AurieSuccess(last_status))
 	{
-		g_ModuleInterface->PrintWarning("Failed to get index for %s", FunctionName);
+		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get index for %s", FunctionName.c_str());
 		return last_status;
 	}
 	last_status = g_ModuleInterface->GetScriptData(index - 100000, script);
 	if (!AurieSuccess(last_status))
 	{
-		g_ModuleInterface->PrintWarning("Failed to get data for %s", FunctionName);
+		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get data for %s", FunctionName.c_str());
 	}
 	return last_status;
 }
@@ -87,7 +87,7 @@ bool IsColorsValid(json colors)
 
 RValue AddSprite(json spr_data, std::string id)
 {
-	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loading Sprites for {}...", id));
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loading Sprites for %s...", id.c_str());
 	if (!spr_data["filename"].is_string())
 	{
 		return RValue();
@@ -114,7 +114,7 @@ RValue AddSprite(json spr_data, std::string id)
 	std::string path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 	{
-		g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id.c_str(), path.c_str());
 		return RValue();
 	}
 	RValue sprite = g_ModuleInterface->CallBuiltin("sprite_add", {
@@ -136,7 +136,7 @@ RValue AddSprite(json spr_data, std::string id)
 			path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
 			if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 			{
-				g_ModuleInterface->PrintInfo(std::format("Error loading Sprite {}, file not found {}", id, path));
+				DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id.c_str(), path.c_str());
 				g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
 				return RValue();
 			}
@@ -153,7 +153,7 @@ RValue AddSprite(json spr_data, std::string id)
 		}
 	}
 
-	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loaded Sprites for {}!", id));
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loaded Sprites for %s!", id.c_str());
 
 	json json_animations = spr_data["animations"];
 
@@ -175,7 +175,7 @@ RValue AddSprite(json spr_data, std::string id)
 
 	if (!impact.ToBoolean())
 	{
-		g_ModuleInterface->PrintInfo(std::format("Error Loading Sprite Animations. {}", id));
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id.c_str());
 		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
@@ -183,7 +183,7 @@ RValue AddSprite(json spr_data, std::string id)
 	RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
 	if (!animations.ToBoolean() || !loco.ToBoolean())
 	{
-		g_ModuleInterface->PrintInfo(std::format("Error Loading Sprite Animations. {}", id));
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id.c_str());
 		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
@@ -205,17 +205,17 @@ void AddSwap(std::filesystem::path path)
 	{
 		if (!data.contains(key))
 		{
-			g_ModuleInterface->PrintWarning("Error Loading %s - Missing Key %s", fileName, key);
+			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Missing Key %s", fileName.c_str(), key.c_str());
 			return;
 		}
 	}
 	if (!data["id"].is_string())
 	{
-		g_ModuleInterface->PrintWarning("Error Loading %s", fileName);
+		DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s", fileName.c_str());
 		return;
 	}
 	std::string id = data["id"].get<std::string>();
-	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loading {}...", id));
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loading %s...", id.c_str());
 
 	json sprite = data["sprite"];
 	if (sprite.is_null())
@@ -227,7 +227,7 @@ void AddSwap(std::filesystem::path path)
 		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprName)});
 		if (!spriteRef.ToBoolean())
 		{
-			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Invalid Sprite Name {}", fileName, sprName));
+			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite Name %s", fileName.c_str(), sprName.c_str());
 			return;
 		}
 
@@ -235,7 +235,7 @@ void AddSwap(std::filesystem::path path)
 		RValue impact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
 		if (!impact.ToBoolean())
 		{
-			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - Sprite {} has no Beastie anims", fileName, sprName));
+			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Sprite %s has no Beastie anims", fileName.c_str(), sprName.c_str());
 			return;
 		}
 		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
@@ -254,13 +254,13 @@ void AddSwap(std::filesystem::path path)
 	{
 		if (!sprite.is_object())
 		{
-			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", fileName);
+			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite", fileName.c_str());
 			return;
 		}
 		RValue spriteRef = AddSprite(sprite, id);
 		if (!spriteRef.ToBoolean())
 		{
-			g_ModuleInterface->PrintWarning("Error Loading %s - Invalid Sprite", fileName);
+			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite", fileName.c_str());
 			return;
 		}
 		swap_sprites[id] = spriteRef;
@@ -284,16 +284,16 @@ void AddSwap(std::filesystem::path path)
 			}
 			else
 			{
-				g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} has beastie {} which doesn't exist", fileName, key, color.get<std::string>()));
+				DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - %s has beastie %s which doesn't exist", fileName.c_str(), key.c_str(), color.get<std::string>().c_str());
 			}
 		}
 		if (!IsColorsValid(data[key]))
 		{
-			g_ModuleInterface->PrintWarning(std::format("Error Loading {} - {} invalid format.", fileName, key));
+			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - %s invalid format.", fileName.c_str(), key.c_str());
 			data[key] = json{};
 		}
 	}
-	g_ModuleInterface->PrintInfo(std::format("[BeastieballCosmetics] - Loaded {}", id));
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loaded %s", id.c_str());
 	loaded_swaps.push_back(data);
 }
 
@@ -327,7 +327,7 @@ bool SwapCompare(json const swap1, json const swap2)
 
 void LoadSwaps()
 {
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[BeastieballCosmetics] - Loading Swaps!");
+	DbgPrintEx(LOG_SEVERITY_DEBUG, "[BeastieballCosmetics] - Loading Swaps!");
 
 	CScript *script = nullptr;
 	AurieStatus last_status = GetScript("gml_Script_ElephantFromJSON", script);
@@ -440,14 +440,13 @@ void FrameCallback(FWFrame &FrameContext)
 		}
 		catch (const json::exception &e)
 		{
-			g_ModuleInterface->PrintWarning("eror!! %s", e.what());
+			DbgPrintEx(LOG_SEVERITY_WARNING, "eror!! %s", e.what());
 		}
 	}
 	frame_counter++;
 }
 
-EXPORTED AurieStatus
-ModuleInitialize(
+EXPORTED AurieStatus ModuleInitialize(
 		IN AurieModule *Module,
 		IN const fs::path &ModulePath)
 {
@@ -473,10 +472,10 @@ ModuleInitialize(
 
 	if (!AurieSuccess(last_status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[BeastieballCosmetics] - Failed to register frame callback!");
+		DbgPrintEx(LOG_SEVERITY_ERROR, "[BeastieballCosmetics] - Failed to register frame callback!");
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[BeastieballCosmetics] - Hello from PluginEntry!");
+	DbgPrintEx(LOG_SEVERITY_DEBUG, "[BeastieballCosmetics] - Hello from PluginEntry!");
 
 	return AURIE_SUCCESS;
 }
