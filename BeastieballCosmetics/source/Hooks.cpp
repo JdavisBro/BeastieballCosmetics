@@ -427,8 +427,7 @@ RValue &DrawMonsterMenu(CInstance *Self, CInstance *Other, RValue &ReturnValue, 
   json swap = MatchSwaps(beastie_id, beastie_name, true);
   if (!swap.is_null())
   {
-    RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-    replaceSprite = &swap_sprite;
+    replaceSprite = &swap_sprites[swap["id"].get<std::string>()];
     // double new_scale = GetSpriteScale(swap_sprite); // atempt to fix menu beasties being too big
     // RValue char_dic = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_dic")});
     // RValue current_beastie = g_ModuleInterface->CallBuiltin("ds_map_find_value", {char_dic, RValue(beastie_id)});
