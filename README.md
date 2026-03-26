@@ -4,15 +4,18 @@ Mod created with [YYToolkit](https://github.com/AurieFramework/YYToolkit) to add
 
 ## Installation
 
-- Download "AurieManager.exe" from [releases](https://github.com/AurieFramework/Aurie/releases) and run it
-- Select "Add Game" and find beastieball.exe (usually at `C:\Program Files (x86)\Steam\steamapps\common\Beastieball\beastieball.exe`)
-- Select "Install Aurie"
-- Download "BeastieballCosmetics.dll" from [releases](https://github.com/JdavisBro/BeastieballCosmetics/releases)
-- Select "Add Mods" and choose "BeastieballCosmetics.dll"
-
-Now when you run the game (either by openning the exe, through Steam, or clicking the button in AurieManager) it'll pop-up with the YYTK console window. It'll take a while to load and might close immediately, just try again.
-
-> Note!!! To uninstall aurie you have to do it through AurieManager.exe by pressing the "Uninstall Aurie" button or the game won't be able to launch.
+- Go to beastieball directory (you should see `beastieball.exe`)
+- Make `mods` folder
+- Inside `mods` folder make `aurie` and `native` folder
+- from https://github.com/AurieFramework/Aurie/releases/
+  - get `AuriePatcher.exe` and put it in the `mods` folder
+  - put `AurieCore.dll` into the `native` folder
+- from https://github.com/AurieFramework/YYToolkit/releases/ get `YYToolkit.dll` and put it in the `aurie` folder
+- Download "BeastieballCosmetics.dll" from [releases](https://github.com/JdavisBro/BeastieballCosmetics/releases) and put that in the `aurie` folder
+- from the game's dir
+  - run this to install `mods\AuriePatcher.exe beastieball.exe mods\native\AurieCore.dll install`
+  - run this to uninstall `mods\AuriePatcher.exe beastieball.exe mods\native\AurieCore.dll remove`
+- run `beastieball.exe` or open it through steam
 
 ## Adding Swaps
 

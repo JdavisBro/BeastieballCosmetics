@@ -124,10 +124,10 @@ RValue AddSprite(json spr_data, std::string id)
 																																	 RValue(false),
 																																	 RValue(originX),
 																																	 RValue(originY),
-																															 });
+		});
 
 	std::string spriteStr = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite})
-															.ToString();
+		.ToString();
 
 	if (!strip)
 	{
@@ -147,7 +147,7 @@ RValue AddSprite(json spr_data, std::string id)
 																																			RValue(false),
 																																			RValue(originX),
 																																			RValue(originY),
-																																	});
+				});
 			g_ModuleInterface->CallBuiltin("sprite_merge", {sprite, frame});
 			g_ModuleInterface->CallBuiltin("sprite_delete", {frame});
 		}
@@ -397,9 +397,14 @@ void DeleteSprites()
 	delete_sprites.shrink_to_fit();
 }
 
-void FrameCallback(FWFrame &FrameContext)
+void CodeCallback(FWCodeEvent &Event)
 {
-	UNREFERENCED_PARAMETER(FrameContext);
+	auto [Self, Other, Code, ArgCount, Arg] = Event.Arguments();
+
+	std::string name = Code->GetName();
+
+	if (name != "gml_Object_objGame_Draw_0")
+		return;
 
 	AurieStatus last_status = AURIE_SUCCESS;
 
@@ -447,8 +452,8 @@ void FrameCallback(FWFrame &FrameContext)
 }
 
 EXPORTED AurieStatus ModuleInitialize(
-		IN AurieModule *Module,
-		IN const fs::path &ModulePath)
+	IN AurieModule *Module,
+	IN const fs::path &ModulePath)
 {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -465,10 +470,10 @@ EXPORTED AurieStatus ModuleInitialize(
 	CreateAllHooks();
 
 	last_status = g_ModuleInterface->CreateCallback(
-			Module,
-			EVENT_FRAME,
-			FrameCallback,
-			0);
+		Module,
+		EVENT_OBJECT_CALL,
+		CodeCallback,
+		0);
 
 	if (!AurieSuccess(last_status))
 	{
