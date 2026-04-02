@@ -9,6 +9,16 @@ using namespace YYTK;
 
 extern YYTKInterface *yytk;
 
-extern std::vector<json> loaded_swaps;
-extern std::map<std::string, RValue> swap_sprites;
-extern std::map<std::string, RValue> swap_loco;
+struct BeastieSwap {
+	std::string id;
+	bool needs_specie;
+	bool needs_names;
+	std::string specie;
+	std::vector<std::string> names;
+    bool has_sprite;
+	RValue sprite;
+	RValue loco;
+    json colors;
+};
+
+extern std::vector<BeastieSwap> loaded_beastie_swaps;

@@ -95,30 +95,23 @@ void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction
   }
 }
 
-json MatchSwaps(std::string &BeastieId, std::string &BeastieName, bool MustHaveSprite)
+BeastieSwap* MatchSwaps(std::string &BeastieId, std::string &BeastieName, bool MustHaveSprite)
 {
-  for (auto swap : loaded_swaps)
+  for (BeastieSwap &swap : loaded_beastie_swaps)
   {
-    if (MustHaveSprite && swap["sprite"].is_null())
+    if (MustHaveSprite && !swap.has_sprite)
       continue;
-    if (!swap["condition"].is_object())
-      return swap;
-    json specie = swap["condition"]["specie"];
-    if (specie.is_string() && BeastieId != specie.get<std::string>())
+    if (swap.needs_specie && BeastieId != swap.specie)
       continue;
-    json names = swap["condition"]["names"];
-    if (!names.is_array())
-      return swap;
-    for (auto name : names)
+    if (!swap.needs_names)
+      return &swap;
+    for (std::string &name : swap.names)
     {
-      if (!name.is_string())
-        continue;
-      if (BeastieName == name.get<std::string>())
-        return swap;
+      if (BeastieName == name)
+        return &swap;
     }
   }
-
-  return json{};
+  return nullptr;
 }
 
 RValue GetBeastie(CInstance *Instance)
@@ -142,15 +135,14 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
     std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
     std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name, true);
-    if (!swap.is_null())
+    BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, true);
+    if (swap)
     {
-      RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
+      RValue swap_sprite = swap->sprite;
       yytk->CallBuiltin("variable_instance_set", {RV_Self, "sprite_index_swap", swap_sprite});
       yytk->CallBuiltin("variable_instance_set", {RV_Self, "sprite_index", swap_sprite});
       yytk->CallBuiltin("variable_instance_set", {RV_Self, "animation_beastie_id", RValue()});
-      RValue swap_loc = swap_loco[swap["id"].get<std::string>()];
-      *Args[2] = swap_loc;
+      *Args[2] = swap->loco;
       numArgs = max(numArgs, 3);
     }
     else
@@ -201,12 +193,9 @@ RValue &SpriteAlt(CInstance *Self, CInstance *Other, RValue &ReturnValue, int nu
     std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
     std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name, true);
-    if (!swap.is_null())
-    {
-      RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-      ReturnValue = swap_sprite;
-    }
+    BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, true);
+    if (swap)
+      ReturnValue = swap->sprite;
     // DbgPrintEx(LOG_SEVERITY_INFO,"%s: %s", beastie_name, ReturnValue.ToString());
   }
 
@@ -222,10 +211,10 @@ RValue &CharAnimationBefore(CInstance *Self, CInstance *Other, RValue &ReturnVal
     std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
     std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name, true);
-    if (!swap.is_null())
+    BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, true);
+    if (swap)
     {
-      RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
+      RValue &swap_sprite = swap->sprite;
       yytk->CallBuiltin("variable_instance_set", {RValue(Self), "sprite_index", swap_sprite});
       if (numArgs >= 4)
         *Args[3] = swap_sprite;
@@ -244,8 +233,8 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
   std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
   try
   {
-    json swap = MatchSwaps(beastie_id, beastie_name, false);
-    if (!swap.is_null())
+    BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, false);
+    if (swap && !swap->colors.is_null())
     {
       json colorSet{};
       int colorIndex = (*Args[0]).ToInt32();
@@ -253,32 +242,23 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
       int colcount = yytk->CallBuiltin("array_length", {mycol}).ToInt32();
       double colorX = yytk->CallBuiltin("array_get", {mycol, colorIndex % colcount}).ToDouble();
 
-      bool colors2exists = swap["colors2"].is_array();
-      bool shinyexists = swap["shiny"].is_array();
-      bool colorsexists = swap["colors"].is_array();
+      json &swap_colors = swap->colors;
+      bool colors2exists = swap_colors["colors2"].is_array();
+      bool shinyexists = swap_colors["shiny"].is_array();
+      bool colorsexists = swap_colors["colors"].is_array();
       if ((colorX >= 2 || (!shinyexists && !colorsexists)) && colors2exists)
-      {
-        colorSet = swap["colors2"];
-      }
+        colorSet = swap_colors["colors2"];
       else if ((colorX > 1 || !colorsexists) && shinyexists)
-      {
-        colorSet = swap["shiny"];
-      }
+        colorSet = swap_colors["shiny"];
       else if (colorsexists)
-      {
-        colorSet = swap["colors"];
-      }
+        colorSet = swap_colors["colors"];
       if (colorSet.is_array() && colorSet.size() > 0)
       {
         json gradient = colorSet[colorIndex % colorSet.size()];
         colorX = colorX - (int)colorX;
         if (gradient.is_object())
-        {
           if (gradient["array"].is_array())
-          {
             gradient = gradient["array"];
-          }
-        }
         if (gradient.is_array())
         {
           json colorA{};
@@ -343,13 +323,13 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
   RValue beastie = RValue(Self);
   std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
   std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
-  json swap = MatchSwaps(beastie_id, beastie_name, false);
+  BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, false);
   getColorNumOriginal(Self, Other, ReturnValue, numArgs, Args);
   size_t gameCount = ReturnValue.ToInt32();
-  if (!swap.is_null())
+  if (swap)
   {
     // this is called directly after the actionframe's sprite_index is set, i overwrite it here only during an ActionFrame call.
-    if (setActionFrame && !swap["sprite"].is_null())
+    if (setActionFrame && swap->has_sprite)
     {
       RValue objActionframe = yytk->CallBuiltin("asset_get_index", {"objActionframe"});
       int actionFrameCount = yytk->CallBuiltin("instance_number", {objActionframe}).ToInt32();
@@ -360,13 +340,13 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
         if (yytk->CallBuiltin("variable_instance_get", {actionFrame, "time"}).ToInt32() < 0) // new ActionFrame have time = -1
           break;
       }
-      RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-      yytk->CallBuiltin("variable_instance_set", {actionFrame, "sprite_index", swap_sprite});
+      yytk->CallBuiltin("variable_instance_set", {actionFrame, "sprite_index", swap->sprite});
     }
 
-    size_t numCol = swap["colors"].is_array() ? swap["colors"].size() : 0;
-    size_t numCol2 = swap["colors2"].is_array() ? swap["colors2"].size() : 0;
-    size_t numShiny = swap["shiny"].is_array() ? swap["shiny"].size() : 0;
+    json &swap_colors = swap->colors;
+    size_t numCol = swap_colors["colors"].is_array() ? swap_colors["colors"].size() : 0;
+    size_t numCol2 = swap_colors["colors2"].is_array() ? swap_colors["colors2"].size() : 0;
+    size_t numShiny = swap_colors["shiny"].is_array() ? swap_colors["shiny"].size() : 0;
     size_t maxNum = max(numCol, max(numCol2, numShiny));
     if (maxNum > 0 && maxNum > gameCount)
       ReturnValue = maxNum;
@@ -391,10 +371,10 @@ RValue &DrawMonsterMenu(CInstance *Self, CInstance *Other, RValue &ReturnValue, 
   std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
   std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
-  json swap = MatchSwaps(beastie_id, beastie_name, true);
-  if (!swap.is_null())
+  BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, true);
+  if (swap)
   {
-    replaceSprite = &swap_sprites[swap["id"].get<std::string>()];
+    replaceSprite = &swap->sprite;
     // double new_scale = GetSpriteScale(swap_sprite); // atempt to fix menu beasties being too big
     // RValue char_dic = yytk->CallBuiltin("variable_global_get", {"char_dic"});
     // RValue current_beastie = yytk->CallBuiltin("ds_map_find_value", {char_dic, RValue(beastie_id)});
@@ -423,12 +403,9 @@ RValue &Sprite(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numAr
     std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
     std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name, true);
-    if (!swap.is_null())
-    {
-      RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-      ReturnValue = swap_sprite;
-    }
+    BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, true);
+    if (swap)
+      ReturnValue = swap->sprite;
     // DbgPrintEx(LOG_SEVERITY_INFO,"%s: %s", beastie_name, ReturnValue.ToString());
   }
 
@@ -453,12 +430,9 @@ RValue &LocomoteBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
     std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
     std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
-    json swap = MatchSwaps(beastie_id, beastie_name, true);
-    if (!swap.is_null())
-    {
-      RValue swap_loc = swap_loco[swap["id"].get<std::string>()];
-      *Args[0] = swap_loc;
-    }
+    BeastieSwap *swap = MatchSwaps(beastie_id, beastie_name, true);
+    if (swap)
+      *Args[0] = swap->loco;
   }
   locomoteOriginal(Self, Other, ReturnValue, numArgs, Args);
 

@@ -35,9 +35,7 @@ AurieStatus GetScript(const char *FunctionName, CScript *&script)
 
 PFUNC_YYGMLScript elephantFromJson = nullptr;
 
-std::vector<json> loaded_swaps;
-std::map<std::string, RValue> swap_sprites;
-std::map<std::string, RValue> swap_loco;
+std::vector<BeastieSwap> loaded_beastie_swaps;
 
 std::string required_keys[] = {"type", "id"};
 std::string color_keys[] = {"colors", "shiny", "colors2"};
@@ -83,16 +81,14 @@ bool IsColorsValid(json &colors)
 	return true;
 }
 
-RValue AddSprite(json &spr_data, const char *id)
+bool AddSprite(json &spr_data, BeastieSwap &swap)
 {
-	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loading Sprites for %s...", id);
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loading Sprites for %s...", swap.id.c_str());
 	if (!spr_data["filename"].is_string())
-		return RValue();
+		return false;
 	std::string filename_template = spr_data["filename"].get<std::string>();
 	if (!spr_data["count"].is_number())
-	{
-		return RValue();
-	}
+		return false;
 	int file_count = spr_data["count"].get<int>();
 	int originX = 484;
 	int originY = 989;
@@ -110,8 +106,8 @@ RValue AddSprite(json &spr_data, const char *id)
 	std::string path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 	{
-		DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id, path.c_str());
-		return RValue();
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", swap.id.c_str(), path.c_str());
+		return false;
 	}
 	RValue sprite = yytk->CallBuiltin("sprite_add", {
 		RValue(path),
@@ -131,9 +127,9 @@ RValue AddSprite(json &spr_data, const char *id)
 			path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
 			if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 			{
-				DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id, path.c_str());
+				DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", swap.id.c_str(), path.c_str());
 				yytk->CallBuiltin("sprite_delete", {sprite});
-				return RValue();
+				return false;
 			}
 			RValue frame = yytk->CallBuiltin("sprite_add", {
 				RValue(path),
@@ -148,7 +144,7 @@ RValue AddSprite(json &spr_data, const char *id)
 		}
 	}
 
-	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loaded Sprites for %s!", id);
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loaded Sprites for %s!", swap.id.c_str());
 
 	json json_animations = spr_data["animations"];
 
@@ -170,29 +166,29 @@ RValue AddSprite(json &spr_data, const char *id)
 
 	if (!impact.ToBoolean())
 	{
-		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id);
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", swap.id.c_str());
 		yytk->CallBuiltin("sprite_delete", {sprite});
-		return RValue();
+		return false;
 	}
 	RValue animations = yytk->CallBuiltin("variable_struct_get", {impact, "anim_data"});
 	RValue loco = yytk->CallBuiltin("variable_struct_get", {impact, "loco_data"});
 	if (!animations.ToBoolean() || !loco.ToBoolean())
 	{
-		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id);
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", swap.id.c_str());
 		yytk->CallBuiltin("sprite_delete", {sprite});
-		return RValue();
+		return false;
 	}
 	yytk->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact, RValue("_" + spriteStr), impact});
 	yytk->CallBuiltin("ds_map_set", {char_anims, sprite, animations});
-	swap_loco[id] = loco;
-
-	return sprite;
+	swap.loco = loco;
+	swap.sprite = sprite;
+	swap.has_sprite = true;
+	return true;
 }
 
 void AddSwap(const std::filesystem::path &path)
 {
 	std::string fileName = path.stem().string();
-	DbgPrintEx(LOG_SEVERITY_WARNING, "Am Loading %s", fileName.c_str());
 	std::fstream f(path);
 	json data = json::parse(f);
 	for (std::string key : required_keys)
@@ -211,12 +207,29 @@ void AddSwap(const std::filesystem::path &path)
 	std::string id = data["id"].get<std::string>();
 	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loading %s...", id.c_str());
 
-	json sprite = data["sprite"];
-	if (sprite.is_null())
-	{
+	BeastieSwap swap = {id, false, false};
+	swap.id = id;
+
+	json condition = data["condition"];
+	if (condition.is_object()) {
+		if (condition["specie"].is_string()) {
+			swap.needs_specie = true;
+			swap.specie = condition["specie"].get<std::string>();
+		}
+		json names = condition["names"];
+		if (names.is_array()) {
+			swap.needs_names = true;
+			for (size_t i = 0; i < names.size(); i++)
+				if (names[i].is_string())
+					swap.names.push_back(names[i].get<std::string>());
+		}
 	}
-	else if (sprite.is_string())
-	{
+
+	json sprite = data["sprite"];
+	if (sprite.is_null()) {
+		swap.has_sprite = false;
+	}
+	else if (sprite.is_string()) {
 		std::string sprName = sprite.get<std::string>();
 		RValue spriteRef = yytk->CallBuiltin("asset_get_index", {RValue(sprName)});
 		if (!spriteRef.ToBoolean())
@@ -241,82 +254,64 @@ void AddSwap(const std::filesystem::path &path)
 			yytk->CallBuiltin("ds_map_set", {char_anims, spriteRef, animations});
 		}
 
-		swap_sprites[id] = spriteRef;
-		swap_loco[id] = loco;
+		swap.sprite = spriteRef;
+		swap.loco = loco;
+		swap.has_sprite = true;
 	}
-	else
-	{
-		if (!sprite.is_object())
-		{
+	else {
+		if (!sprite.is_object()) {
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite", fileName.c_str());
 			return;
 		}
-		RValue spriteRef = AddSprite(sprite, id.c_str());
-		if (!spriteRef.ToBoolean())
-		{
+		if (!AddSprite(sprite, swap)) {
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite", fileName.c_str());
 			return;
 		}
-		swap_sprites[id] = spriteRef;
 	}
 
 	RValue char_dic = yytk->CallBuiltin("variable_global_get", {"char_dic"});
+	json colors = json::object({});
+	bool any_colors = false;
 	for (std::string key : color_keys)
 	{
 		if (!data.contains(key))
-		{
 			continue;
-		}
 		json color = data[key];
-		if (color.is_string())
-		{
+		if (color.is_string()) {
 			RValue beastie = yytk->CallBuiltin("ds_map_find_value", {char_dic, RValue(color.get<std::string>())});
-			if (beastie.ToBoolean())
-			{
+			if (beastie.ToBoolean()) {
 				RValue coldata = yytk->CallBuiltin("variable_instance_get", {beastie, RValue(key)});
-				data[key] = json::parse(yytk->CallBuiltin("json_stringify", {coldata}).ToString());
+				colors[key] = json::parse(yytk->CallBuiltin("json_stringify", {coldata}).ToString());
+				any_colors = true;
 			}
-			else
-			{
+			else {
 				DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - %s has beastie %s which doesn't exist", fileName.c_str(), key.c_str(), color.get<std::string>().c_str());
 			}
 		}
-		if (!IsColorsValid(data[key]))
-		{
+		else if (IsColorsValid(data[key])) {
+			colors[key] = color;
+			any_colors = true;
+		}
+		else {
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - %s invalid format.", fileName.c_str(), key.c_str());
-			data[key] = json{};
 		}
 	}
+	swap.colors = any_colors ? colors : json{};
 	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loaded %s", id.c_str());
-	loaded_swaps.push_back(data);
+	loaded_beastie_swaps.push_back(swap);
 }
 
-int GetConditionValue(const json &condition)
+inline size_t GetConditionValue(const BeastieSwap &swap)
 {
-	if (!condition.is_object())
-	{
-		return 0;
-	}
-	int value = 0;
-	if (condition["specie"].is_string())
-	{
-		value += 1;
-	}
-	if (condition["names"].is_array() && condition["names"].size())
-	{
-		value += 2 + (int)condition["names"].size();
-	}
-	return value;
+	return (size_t)swap.needs_specie + (size_t)swap.needs_names + swap.names.size();
 }
 
-bool SwapCompare(const json &swap1, const json &swap2)
+bool SwapCompare(const BeastieSwap &swap1, const BeastieSwap &swap2)
 {
-	std::string id1 = swap1["id"].get<std::string>();
-	std::string id2 = swap2["id"].get<std::string>();
 	// should prioritise swaps with more conditions to not be overwritten by swaps with less conditions.
-	int cond1 = GetConditionValue(swap1["condition"]);
-	int cond2 = GetConditionValue(swap2["condition"]);
-	return cond1 != cond2 ? cond1 > cond2 : id1.compare(id2) >= 0;
+	size_t cond1 = GetConditionValue(swap1);
+	size_t cond2 = GetConditionValue(swap2);
+	return cond1 != cond2 ? cond1 > cond2 : swap1.id.compare(swap2.id) >= 0;
 }
 
 void LoadSwaps()
@@ -347,7 +342,7 @@ void LoadSwaps()
 			AddSwap(dir_entry.path());
 		}
 	}
-	std::sort(loaded_swaps.begin(), loaded_swaps.end(), SwapCompare);
+	std::sort(loaded_beastie_swaps.begin(), loaded_beastie_swaps.end(), SwapCompare);
 	DbgPrintEx(LOG_SEVERITY_DEBUG, "[BeastieballCosmetics] - Finished Loading Swaps!");
 }
 
@@ -355,22 +350,14 @@ std::vector<RValue> delete_sprites;
 
 void UnloadSwaps()
 {
-	for (json swap : loaded_swaps)
+	for (BeastieSwap &swap : loaded_beastie_swaps)
 	{
-		std::string id = swap["id"].get<std::string>();
-		if (!swap_sprites.contains(id))
-			continue;
-		RValue sprite = swap_sprites[id];
-		std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {sprite}).ToString();
+		std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {swap.sprite}).ToString();
 		if (!sprite_name.starts_with("spr"))
-			delete_sprites.push_back(sprite);
-
-		swap_sprites.erase(id);
-		swap_loco.erase(id);
+			delete_sprites.push_back(swap.sprite);
 	}
 
-	loaded_swaps.clear();
-	loaded_swaps.shrink_to_fit();
+	loaded_beastie_swaps.clear();
 }
 
 void DeleteSprites()
@@ -417,6 +404,7 @@ void CodeCallback(FWCodeEvent &Event)
 			{
 				UnloadSwaps();
 				LoadSwaps();
+				loaded_beastie_swaps.shrink_to_fit();
 				reloaded_last_frame = true;
 			}
 		}
