@@ -19,19 +19,18 @@ std::map<std::string, CScript *> found_scripts;
 
 void FindScripts()
 {
-  std::vector<NameCheck>
-      lost_scripts = {
-          {NULL, "gml_Script_char_animation_draw"},
-          {NULL, "gml_Script_shader_monster"},
-          {"gml_Script_sprite_alt@", "class_beastie_template"},
-          {NULL, "gml_Script_char_animation"},
-          {"gml_Script_get_color@", "class_beastie"},
-          {"gml_Script_get_color_num@", "class_beastie"},
-          {NULL, "gml_Script_draw_monster_menu"},
-          {"gml_Script_sprite@", "class_beastie_template"},
-          {NULL, "gml_Script_ActionFrame"},
-          {NULL, "gml_Script_locomote"},
-      };
+  std::vector<NameCheck> lost_scripts = {
+    {NULL, "gml_Script_char_animation_draw"},
+    {NULL, "gml_Script_shader_monster"},
+    {"gml_Script_sprite_alt@", "class_beastie_template"},
+    {NULL, "gml_Script_char_animation"},
+    {"gml_Script_get_color@", "class_beastie"},
+    {"gml_Script_get_color_num@", "class_beastie"},
+    {NULL, "gml_Script_draw_monster_menu"},
+    {"gml_Script_sprite@", "class_beastie_template"},
+    {NULL, "gml_Script_ActionFrame"},
+    {NULL, "gml_Script_locomote"},
+  };
 
   AurieStatus last_status = AURIE_SUCCESS;
   CScript *script = nullptr;
@@ -82,11 +81,12 @@ void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction
   }
   CScript *script = found_scripts[FunctionName];
   last_status = MmCreateHook(
-      g_ArSelfModule,
-      HookId,
-      script->m_Functions->m_ScriptFunction,
-      HookFunction,
-      Trampoline);
+    g_ArSelfModule,
+    HookId,
+    script->m_Functions->m_ScriptFunction,
+    HookFunction,
+    Trampoline
+  );
   if (!AurieSuccess(last_status))
   {
     hook_failed = true;
@@ -95,87 +95,78 @@ void CreateHook(std::string HookId, std::string FunctionName, PVOID HookFunction
   }
 }
 
-json MatchSwaps(std::string BeastieId, std::string BeastieName, bool MustHaveSprite)
+json MatchSwaps(std::string &BeastieId, std::string &BeastieName, bool MustHaveSprite)
 {
   for (auto swap : loaded_swaps)
   {
     if (MustHaveSprite && swap["sprite"].is_null())
-    {
       continue;
-    }
     if (!swap["condition"].is_object())
-    {
       return swap;
-    }
     json specie = swap["condition"]["specie"];
-    if (specie.is_string())
-    {
-      if (BeastieId != specie.get<std::string>())
-      {
-        continue;
-      }
-    }
+    if (specie.is_string() && BeastieId != specie.get<std::string>())
+      continue;
     json names = swap["condition"]["names"];
     if (!names.is_array())
-    {
       return swap;
-    }
-
     for (auto name : names)
     {
       if (!name.is_string())
-      {
         continue;
-      }
       if (BeastieName == name.get<std::string>())
-      {
         return swap;
-      }
     }
   }
 
   return json{};
 }
 
+RValue GetBeastie(CInstance *Instance)
+{
+  RValue RV_Inst = RValue(Instance);
+  RValue beastie;
+  yytk->CallBuiltinEx(beastie, "variable_instance_get", nullptr, nullptr, {RV_Inst, "char"});
+  if (beastie.IsUndefined())
+    yytk->CallBuiltinEx(beastie, "variable_instance_get", nullptr, nullptr, {RV_Inst, "my_data"});
+  return beastie;
+}
+
 PFUNC_YYGMLScript charAnimationDrawOriginal = nullptr;
 RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
   bool update_sprite = false;
-  RValue beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
-  if (!beastie.ToBoolean())
+  RValue beastie = GetBeastie(Self);
+  RValue RV_Self = RValue(Self);
+  if (!beastie.IsUndefined())
   {
-    beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("my_data")});
-  }
-  if (beastie.ToBoolean())
-  {
-    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
-    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
     json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
     {
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-      yytk->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index_swap"), swap_sprite});
-      yytk->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index"), swap_sprite});
-      yytk->CallBuiltin("variable_instance_set", {RValue(Self), RValue("animation_beastie_id"), RValue()});
+      yytk->CallBuiltin("variable_instance_set", {RV_Self, "sprite_index_swap", swap_sprite});
+      yytk->CallBuiltin("variable_instance_set", {RV_Self, "sprite_index", swap_sprite});
+      yytk->CallBuiltin("variable_instance_set", {RV_Self, "animation_beastie_id", RValue()});
       RValue swap_loc = swap_loco[swap["id"].get<std::string>()];
       *Args[2] = swap_loc;
       numArgs = max(numArgs, 3);
     }
     else
     {
-      yytk->CallBuiltin("variable_instance_set", {RValue(Self), RValue("animation_beastie_id"), beastie});
+      yytk->CallBuiltin("variable_instance_set", {RV_Self, "animation_beastie_id", beastie});
       update_sprite = true;
     }
   }
   charAnimationDrawOriginal(Self, Other, ReturnValue, numArgs, Args);
   if (update_sprite)
   {
-    RValue chars = yytk->CallBuiltin("variable_global_get", {RValue("char_dic")});
-    RValue specie = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("specie")});
+    RValue chars = yytk->CallBuiltin("variable_global_get", {"char_dic"});
+    RValue specie = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"});
     RValue beastie_template = yytk->CallBuiltin("ds_map_find_value", {chars, specie});
-    RValue spr = yytk->CallBuiltin("variable_struct_get", {beastie_template, RValue("spr")});
-    yytk->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index"), spr});
+    RValue spr = yytk->CallBuiltin("variable_struct_get", {beastie_template, "spr"});
+    yytk->CallBuiltin("variable_instance_set", {RV_Self, "sprite_index", spr});
   }
 
   return ReturnValue;
@@ -184,16 +175,9 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
 PFUNC_YYGMLScript shaderMonsterOriginal = nullptr;
 RValue &ShaderMonsterBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
-  RValue beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
-  if (!beastie.ToBoolean())
-  {
-    beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("my_data")});
-  }
-  if (beastie.ToBoolean())
-  {
-    // std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+  RValue beastie = GetBeastie(Self);
+  if (!beastie.IsUndefined())
     *Args[0] = beastie;
-  }
   shaderMonsterOriginal(Self, Other, ReturnValue, numArgs, Args);
 
   return ReturnValue;
@@ -211,15 +195,11 @@ RValue &SpriteAlt(CInstance *Self, CInstance *Other, RValue &ReturnValue, int nu
     return ReturnValue;
   }
 
-  RValue beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Other), RValue("char")});
-  if (!beastie.ToBoolean())
+  RValue beastie = GetBeastie(Other);
+  if (!beastie.IsUndefined())
   {
-    beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Other), RValue("my_data")});
-  }
-  if (beastie.ToBoolean())
-  {
-    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
-    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
     json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
@@ -236,25 +216,19 @@ RValue &SpriteAlt(CInstance *Self, CInstance *Other, RValue &ReturnValue, int nu
 PFUNC_YYGMLScript charAnimationOriginal = nullptr;
 RValue &CharAnimationBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
-  RValue beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
-  if (!beastie.ToBoolean())
+  RValue beastie = GetBeastie(Self);
+  if (!beastie.IsUndefined())
   {
-    beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("my_data")});
-  }
-  if (beastie.ToBoolean())
-  {
-    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
-    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
     json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
     {
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-      yytk->CallBuiltin("variable_instance_set", {RValue(Self), RValue("sprite_index"), swap_sprite});
+      yytk->CallBuiltin("variable_instance_set", {RValue(Self), "sprite_index", swap_sprite});
       if (numArgs >= 4)
-      {
         *Args[3] = swap_sprite;
-      }
     }
   }
   charAnimationOriginal(Self, Other, ReturnValue, numArgs, Args);
@@ -265,8 +239,9 @@ RValue &CharAnimationBefore(CInstance *Self, CInstance *Other, RValue &ReturnVal
 PFUNC_YYGMLScript getColorOriginal = nullptr;
 RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
-  std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("specie")}).ToString();
-  std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("name")}).ToString();
+  RValue beastie = RValue(Self);
+  std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+  std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
   try
   {
     json swap = MatchSwaps(beastie_id, beastie_name, false);
@@ -274,9 +249,9 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
     {
       json colorSet{};
       int colorIndex = (*Args[0]).ToInt32();
-      RValue mycol = yytk->CallBuiltin("variable_struct_get", {RValue(Self), RValue("color")});
+      RValue mycol = yytk->CallBuiltin("variable_struct_get", {beastie, "color"});
       int colcount = yytk->CallBuiltin("array_length", {mycol}).ToInt32();
-      double colorX = yytk->CallBuiltin("array_get", {mycol, RValue(colorIndex % colcount)}).ToDouble();
+      double colorX = yytk->CallBuiltin("array_get", {mycol, colorIndex % colcount}).ToDouble();
 
       bool colors2exists = swap["colors2"].is_array();
       bool shinyexists = swap["shiny"].is_array();
@@ -330,12 +305,12 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
           }
           if (colorA.is_null() && !colorB.is_null())
           {
-            ReturnValue = RValue(colorB["color"].get<double>());
+            ReturnValue = colorB["color"].get<double>();
             return ReturnValue;
           }
           else if (!colorA.is_null() && colorB.is_null())
           {
-            ReturnValue = RValue(colorA["color"].get<double>());
+            ReturnValue = colorA["color"].get<double>();
             return ReturnValue;
           }
           else if (!colorA.is_null() && !colorB.is_null())
@@ -344,9 +319,7 @@ RValue &GetColorBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, i
             double xA = colorA["x"].get<double>();
             double valueB = colorB["color"].get<double>();
             double xB = colorB["x"].get<double>();
-            ReturnValue = yytk->CallBuiltin("merge_color", {RValue(valueA),
-                                                                         RValue(valueB),
-                                                                         RValue((colorX - xA) / (xB - xA))});
+            ReturnValue = yytk->CallBuiltin("merge_color", {valueA, valueB, (colorX - xA) / (xB - xA)});
             return ReturnValue;
           }
         }
@@ -367,8 +340,9 @@ static bool setActionFrame = false;
 PFUNC_YYGMLScript getColorNumOriginal = nullptr;
 RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
-  std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("specie")}).ToString();
-  std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("name")}).ToString();
+  RValue beastie = RValue(Self);
+  std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+  std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
   json swap = MatchSwaps(beastie_id, beastie_name, false);
   getColorNumOriginal(Self, Other, ReturnValue, numArgs, Args);
   size_t gameCount = ReturnValue.ToInt32();
@@ -382,16 +356,12 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
       RValue actionFrame;
       for (int i = 0; i < actionFrameCount; i++)
       {
-        actionFrame = yytk->CallBuiltin("instance_find", {objActionframe, RValue(i)});
-        if (yytk->CallBuiltin("variable_instance_get", {actionFrame, RValue("time")}).ToInt32() < 0) // new ActionFrame have time = -1
-        {
+        actionFrame = yytk->CallBuiltin("instance_find", {objActionframe, i});
+        if (yytk->CallBuiltin("variable_instance_get", {actionFrame, "time"}).ToInt32() < 0) // new ActionFrame have time = -1
           break;
-        }
       }
       RValue swap_sprite = swap_sprites[swap["id"].get<std::string>()];
-      yytk->CallBuiltin("variable_instance_set", {actionFrame,
-                                                               RValue("sprite_index"),
-                                                               swap_sprite});
+      yytk->CallBuiltin("variable_instance_set", {actionFrame, "sprite_index", swap_sprite});
     }
 
     size_t numCol = swap["colors"].is_array() ? swap["colors"].size() : 0;
@@ -399,10 +369,7 @@ RValue &GetColorNumBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue
     size_t numShiny = swap["shiny"].is_array() ? swap["shiny"].size() : 0;
     size_t maxNum = max(numCol, max(numCol2, numShiny));
     if (maxNum > 0 && maxNum > gameCount)
-    {
-      ReturnValue = RValue(maxNum);
-      return ReturnValue;
-    }
+      ReturnValue = maxNum;
   }
 
   return ReturnValue;
@@ -421,19 +388,19 @@ PFUNC_YYGMLScript drawMonsterMenuOriginal = nullptr;
 RValue &DrawMonsterMenu(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
   RValue beastie = *Args[0];
-  std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
-  std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+  std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+  std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
   json swap = MatchSwaps(beastie_id, beastie_name, true);
   if (!swap.is_null())
   {
     replaceSprite = &swap_sprites[swap["id"].get<std::string>()];
     // double new_scale = GetSpriteScale(swap_sprite); // atempt to fix menu beasties being too big
-    // RValue char_dic = yytk->CallBuiltin("variable_global_get", {RValue("char_dic")});
+    // RValue char_dic = yytk->CallBuiltin("variable_global_get", {"char_dic"});
     // RValue current_beastie = yytk->CallBuiltin("ds_map_find_value", {char_dic, RValue(beastie_id)});
-    // double old_scale = GetSpriteScale(yytk->CallBuiltin("variable_instance_get", {current_beastie, RValue("spr")}));
+    // double old_scale = GetSpriteScale(yytk->CallBuiltin("variable_instance_get", {current_beastie, "spr"}));
     // double scale = (*Args[3]).ToDouble();
-    // *Args[3] = RValue(scale * (new_scale / old_scale));
+    // *Args[3] = scale * (new_scale / old_scale);
   }
   drawMonsterMenuOriginal(Self, Other, ReturnValue, numArgs, Args);
   replaceSprite = nullptr;
@@ -450,15 +417,11 @@ RValue &Sprite(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numAr
     return ReturnValue;
   }
 
-  RValue beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Other), RValue("char")});
-  if (!beastie.ToBoolean())
+  RValue beastie = GetBeastie(Other);
+  if (!beastie.IsUndefined())
   {
-    beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Other), RValue("my_data")});
-  }
-  if (beastie.ToBoolean())
-  {
-    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
-    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
     json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())
@@ -484,15 +447,11 @@ RValue &ActionFrame(CInstance *Self, CInstance *Other, RValue &ReturnValue, int 
 PFUNC_YYGMLScript locomoteOriginal = nullptr;
 RValue &LocomoteBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
-  RValue beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("char")});
-  if (!beastie.ToBoolean())
+  RValue beastie = GetBeastie(Self);
+  if (!beastie.IsUndefined())
   {
-    beastie = yytk->CallBuiltin("variable_instance_get", {RValue(Self), RValue("my_data")});
-  }
-  if (beastie.ToBoolean())
-  {
-    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("specie")}).ToString();
-    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, RValue("name")}).ToString();
+    std::string beastie_id = yytk->CallBuiltin("variable_instance_get", {beastie, "specie"}).ToString();
+    std::string beastie_name = yytk->CallBuiltin("variable_instance_get", {beastie, "name"}).ToString();
 
     json swap = MatchSwaps(beastie_id, beastie_name, true);
     if (!swap.is_null())

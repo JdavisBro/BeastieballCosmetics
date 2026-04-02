@@ -15,20 +15,20 @@ using namespace YYTK;
 
 YYTKInterface *yytk = nullptr;
 
-AurieStatus GetScript(std::string FunctionName, CScript *&script)
+AurieStatus GetScript(const char *FunctionName, CScript *&script)
 {
 	AurieStatus last_status = AURIE_SUCCESS;
 	int index;
-	last_status = yytk->GetNamedRoutineIndex(FunctionName.c_str(), &index);
+	last_status = yytk->GetNamedRoutineIndex(FunctionName, &index);
 	if (!AurieSuccess(last_status))
 	{
-		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get index for %s", FunctionName.c_str());
+		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get index for %s", FunctionName);
 		return last_status;
 	}
 	last_status = yytk->GetScriptData(index - 100000, script);
 	if (!AurieSuccess(last_status))
 	{
-		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get data for %s", FunctionName.c_str());
+		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get data for %s", FunctionName);
 	}
 	return last_status;
 }
@@ -39,12 +39,10 @@ std::vector<json> loaded_swaps;
 std::map<std::string, RValue> swap_sprites;
 std::map<std::string, RValue> swap_loco;
 
-std::string required_keys[] = {
-		"type", "id"};
-std::string color_keys[] = {
-		"colors", "shiny", "colors2"};
+std::string required_keys[] = {"type", "id"};
+std::string color_keys[] = {"colors", "shiny", "colors2"};
 
-bool IsColorsValid(json colors)
+bool IsColorsValid(json &colors)
 {
 	if (!colors.is_array() || !colors.size())
 	{
@@ -85,13 +83,11 @@ bool IsColorsValid(json colors)
 	return true;
 }
 
-RValue AddSprite(json spr_data, std::string id)
+RValue AddSprite(json &spr_data, const char *id)
 {
-	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loading Sprites for %s...", id.c_str());
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loading Sprites for %s...", id);
 	if (!spr_data["filename"].is_string())
-	{
 		return RValue();
-	}
 	std::string filename_template = spr_data["filename"].get<std::string>();
 	if (!spr_data["count"].is_number())
 	{
@@ -114,20 +110,19 @@ RValue AddSprite(json spr_data, std::string id)
 	std::string path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
 	if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 	{
-		DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id.c_str(), path.c_str());
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id, path.c_str());
 		return RValue();
 	}
 	RValue sprite = yytk->CallBuiltin("sprite_add", {
-																																	 RValue(path),
-																																	 RValue(strip ? file_count : 1),
-																																	 RValue(false),
-																																	 RValue(false),
-																																	 RValue(originX),
-																																	 RValue(originY),
-		});
+		RValue(path),
+		strip ? file_count : 1,
+		false,
+		false,
+		originX,
+		originY,
+	});
 
-	std::string spriteStr = yytk->CallBuiltin("sprite_get_name", {sprite})
-		.ToString();
+	std::string spriteStr = yytk->CallBuiltin("sprite_get_name", {sprite}).ToString();
 
 	if (!strip)
 	{
@@ -136,29 +131,29 @@ RValue AddSprite(json spr_data, std::string id)
 			path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args(i));
 			if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 			{
-				DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id.c_str(), path.c_str());
+				DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id, path.c_str());
 				yytk->CallBuiltin("sprite_delete", {sprite});
 				return RValue();
 			}
 			RValue frame = yytk->CallBuiltin("sprite_add", {
-																																			RValue(path),
-																																			RValue(1),
-																																			RValue(false),
-																																			RValue(false),
-																																			RValue(originX),
-																																			RValue(originY),
-				});
+				RValue(path),
+				1,
+				false,
+				false,
+				originX,
+				originY,
+			});
 			yytk->CallBuiltin("sprite_merge", {sprite, frame});
 			yytk->CallBuiltin("sprite_delete", {frame});
 		}
 	}
 
-	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loaded Sprites for %s!", id.c_str());
+	DbgPrintEx(LOG_SEVERITY_INFO, "[BeastieballCosmetics] - Loaded Sprites for %s!", id);
 
 	json json_animations = spr_data["animations"];
 
-	RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
-	RValue char_anims = yytk->CallBuiltin("variable_global_get", {RValue("char_animations")});
+	RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {"sprite_beastie_ball_impact"});
+	RValue char_anims = yytk->CallBuiltin("variable_global_get", {"char_animations"});
 
 	RValue impact;
 	if (json_animations.is_string())
@@ -175,30 +170,29 @@ RValue AddSprite(json spr_data, std::string id)
 
 	if (!impact.ToBoolean())
 	{
-		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id.c_str());
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id);
 		yytk->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
-	RValue animations = yytk->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
-	RValue loco = yytk->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
+	RValue animations = yytk->CallBuiltin("variable_struct_get", {impact, "anim_data"});
+	RValue loco = yytk->CallBuiltin("variable_struct_get", {impact, "loco_data"});
 	if (!animations.ToBoolean() || !loco.ToBoolean())
 	{
-		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id.c_str());
+		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id);
 		yytk->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
-	yytk->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact,
-																												 RValue("_" + spriteStr),
-																												 impact});
+	yytk->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact, RValue("_" + spriteStr), impact});
 	yytk->CallBuiltin("ds_map_set", {char_anims, sprite, animations});
 	swap_loco[id] = loco;
 
 	return sprite;
 }
 
-void AddSwap(std::filesystem::path path)
+void AddSwap(const std::filesystem::path &path)
 {
 	std::string fileName = path.stem().string();
+	DbgPrintEx(LOG_SEVERITY_WARNING, "Am Loading %s", fileName.c_str());
 	std::fstream f(path);
 	json data = json::parse(f);
 	for (std::string key : required_keys)
@@ -231,19 +225,19 @@ void AddSwap(std::filesystem::path path)
 			return;
 		}
 
-		RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
+		RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {"sprite_beastie_ball_impact"});
 		RValue impact = yytk->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
 		if (!impact.ToBoolean())
 		{
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Sprite %s has no Beastie anims", fileName.c_str(), sprName.c_str());
 			return;
 		}
-		RValue loco = yytk->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
-		RValue char_anims = yytk->CallBuiltin("variable_global_get", {RValue("char_animations")});
+		RValue loco = yytk->CallBuiltin("variable_struct_get", {impact, "loco_data"});
+		RValue char_anims = yytk->CallBuiltin("variable_global_get", {"char_animations"});
 		RValue char_anims_sprite = yytk->CallBuiltin("ds_map_get", {char_anims, spriteRef});
 		if (!char_anims_sprite.ToBoolean()) // some beastie sprites (alt sprites like sprRat_alt) aren't in char_animations
 		{
-			RValue animations = yytk->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
+			RValue animations = yytk->CallBuiltin("variable_struct_get", {impact, "anim_data"});
 			yytk->CallBuiltin("ds_map_set", {char_anims, spriteRef, animations});
 		}
 
@@ -257,7 +251,7 @@ void AddSwap(std::filesystem::path path)
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite", fileName.c_str());
 			return;
 		}
-		RValue spriteRef = AddSprite(sprite, id);
+		RValue spriteRef = AddSprite(sprite, id.c_str());
 		if (!spriteRef.ToBoolean())
 		{
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite", fileName.c_str());
@@ -266,7 +260,7 @@ void AddSwap(std::filesystem::path path)
 		swap_sprites[id] = spriteRef;
 	}
 
-	RValue char_dic = yytk->CallBuiltin("variable_global_get", {RValue("char_dic")});
+	RValue char_dic = yytk->CallBuiltin("variable_global_get", {"char_dic"});
 	for (std::string key : color_keys)
 	{
 		if (!data.contains(key))
@@ -297,7 +291,7 @@ void AddSwap(std::filesystem::path path)
 	loaded_swaps.push_back(data);
 }
 
-int GetConditionValue(json condition)
+int GetConditionValue(const json &condition)
 {
 	if (!condition.is_object())
 	{
@@ -315,7 +309,7 @@ int GetConditionValue(json condition)
 	return value;
 }
 
-bool SwapCompare(json const swap1, json const swap2)
+bool SwapCompare(const json &swap1, const json &swap2)
 {
 	std::string id1 = swap1["id"].get<std::string>();
 	std::string id2 = swap2["id"].get<std::string>();
@@ -354,6 +348,7 @@ void LoadSwaps()
 		}
 	}
 	std::sort(loaded_swaps.begin(), loaded_swaps.end(), SwapCompare);
+	DbgPrintEx(LOG_SEVERITY_DEBUG, "[BeastieballCosmetics] - Finished Loading Swaps!");
 }
 
 std::vector<RValue> delete_sprites;
@@ -364,15 +359,11 @@ void UnloadSwaps()
 	{
 		std::string id = swap["id"].get<std::string>();
 		if (!swap_sprites.contains(id))
-		{
 			continue;
-		}
 		RValue sprite = swap_sprites[id];
 		std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {sprite}).ToString();
 		if (!sprite_name.starts_with("spr"))
-		{
 			delete_sprites.push_back(sprite);
-		}
 
 		swap_sprites.erase(id);
 		swap_loco.erase(id);
@@ -384,8 +375,8 @@ void UnloadSwaps()
 
 void DeleteSprites()
 {
-	RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
-	RValue char_anims = yytk->CallBuiltin("variable_global_get", {RValue("char_animations")});
+	RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {"sprite_beastie_ball_impact"});
+	RValue char_anims = yytk->CallBuiltin("variable_global_get", {"char_animations"});
 	for (RValue sprite : delete_sprites)
 	{
 		std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {sprite}).ToString();
@@ -417,9 +408,9 @@ void CodeCallback(FWCodeEvent &Event)
 		{
 			DeleteSprites();
 		}
-		short ctrl = GetAsyncKeyState(VK_CONTROL);
-		short shift = GetAsyncKeyState(VK_SHIFT);
-		short r = GetAsyncKeyState('R');
+		bool ctrl = yytk->CallBuiltin("keyboard_check", {17.0}).ToBoolean();
+		bool shift = yytk->CallBuiltin("keyboard_check", {16.0}).ToBoolean();
+		bool r = yytk->CallBuiltin("keyboard_check", {82.0}).ToBoolean();
 		if (ctrl && shift && r)
 		{
 			if (!reloaded_last_frame)
