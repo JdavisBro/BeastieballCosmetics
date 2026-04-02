@@ -13,19 +13,19 @@ using namespace YYTK;
 #include <filesystem>
 #include <format>
 
-YYTKInterface *g_ModuleInterface = nullptr;
+YYTKInterface *yytk = nullptr;
 
 AurieStatus GetScript(std::string FunctionName, CScript *&script)
 {
 	AurieStatus last_status = AURIE_SUCCESS;
 	int index;
-	last_status = g_ModuleInterface->GetNamedRoutineIndex(FunctionName.c_str(), &index);
+	last_status = yytk->GetNamedRoutineIndex(FunctionName.c_str(), &index);
 	if (!AurieSuccess(last_status))
 	{
 		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get index for %s", FunctionName.c_str());
 		return last_status;
 	}
-	last_status = g_ModuleInterface->GetScriptData(index - 100000, script);
+	last_status = yytk->GetScriptData(index - 100000, script);
 	if (!AurieSuccess(last_status))
 	{
 		DbgPrintEx(LOG_SEVERITY_WARNING, "Failed to get data for %s", FunctionName.c_str());
@@ -108,7 +108,7 @@ RValue AddSprite(json spr_data, std::string id)
 	bool strip = spr_data["strip"].is_boolean() ? spr_data["strip"].get<bool>() : false;
 
 	RValue working_rvalue;
-	g_ModuleInterface->GetBuiltin("program_directory", nullptr, NULL_INDEX, working_rvalue);
+	yytk->GetBuiltin("program_directory", nullptr, NULL_INDEX, working_rvalue);
 	std::string working = working_rvalue.ToString();
 
 	std::string path = working + "mod_data/BeastieballCosmetics/" + std::vformat(filename_template, std::make_format_args("0"));
@@ -117,7 +117,7 @@ RValue AddSprite(json spr_data, std::string id)
 		DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id.c_str(), path.c_str());
 		return RValue();
 	}
-	RValue sprite = g_ModuleInterface->CallBuiltin("sprite_add", {
+	RValue sprite = yytk->CallBuiltin("sprite_add", {
 																																	 RValue(path),
 																																	 RValue(strip ? file_count : 1),
 																																	 RValue(false),
@@ -126,7 +126,7 @@ RValue AddSprite(json spr_data, std::string id)
 																																	 RValue(originY),
 		});
 
-	std::string spriteStr = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite})
+	std::string spriteStr = yytk->CallBuiltin("sprite_get_name", {sprite})
 		.ToString();
 
 	if (!strip)
@@ -137,10 +137,10 @@ RValue AddSprite(json spr_data, std::string id)
 			if (!std::filesystem::exists(path) || !std::filesystem::is_regular_file(path))
 			{
 				DbgPrintEx(LOG_SEVERITY_INFO, "Error loading Sprite %s, file not found %s", id.c_str(), path.c_str());
-				g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
+				yytk->CallBuiltin("sprite_delete", {sprite});
 				return RValue();
 			}
-			RValue frame = g_ModuleInterface->CallBuiltin("sprite_add", {
+			RValue frame = yytk->CallBuiltin("sprite_add", {
 																																			RValue(path),
 																																			RValue(1),
 																																			RValue(false),
@@ -148,8 +148,8 @@ RValue AddSprite(json spr_data, std::string id)
 																																			RValue(originX),
 																																			RValue(originY),
 				});
-			g_ModuleInterface->CallBuiltin("sprite_merge", {sprite, frame});
-			g_ModuleInterface->CallBuiltin("sprite_delete", {frame});
+			yytk->CallBuiltin("sprite_merge", {sprite, frame});
+			yytk->CallBuiltin("sprite_delete", {frame});
 		}
 	}
 
@@ -157,18 +157,18 @@ RValue AddSprite(json spr_data, std::string id)
 
 	json json_animations = spr_data["animations"];
 
-	RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
-	RValue char_anims = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_animations")});
+	RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
+	RValue char_anims = yytk->CallBuiltin("variable_global_get", {RValue("char_animations")});
 
 	RValue impact;
 	if (json_animations.is_string())
 	{
 		std::string oldSpriteStr = json_animations.get<std::string>();
-		impact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + oldSpriteStr)});
+		impact = yytk->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + oldSpriteStr)});
 	}
 	else if (json_animations.is_object())
 	{
-		RValue parsed = g_ModuleInterface->CallBuiltin("json_parse", {RValue(json_animations.dump())});
+		RValue parsed = yytk->CallBuiltin("json_parse", {RValue(json_animations.dump())});
 		RValue *args[] = {&parsed};
 		elephantFromJson(nullptr, nullptr, impact, 1, args);
 	}
@@ -176,21 +176,21 @@ RValue AddSprite(json spr_data, std::string id)
 	if (!impact.ToBoolean())
 	{
 		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id.c_str());
-		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
+		yytk->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
-	RValue animations = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
-	RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
+	RValue animations = yytk->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
+	RValue loco = yytk->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
 	if (!animations.ToBoolean() || !loco.ToBoolean())
 	{
 		DbgPrintEx(LOG_SEVERITY_INFO, "Error Loading Sprite Animations. %s", id.c_str());
-		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
+		yytk->CallBuiltin("sprite_delete", {sprite});
 		return RValue();
 	}
-	g_ModuleInterface->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact,
+	yytk->CallBuiltin("variable_struct_set", {sprite_beastie_ball_impact,
 																												 RValue("_" + spriteStr),
 																												 impact});
-	g_ModuleInterface->CallBuiltin("ds_map_set", {char_anims, sprite, animations});
+	yytk->CallBuiltin("ds_map_set", {char_anims, sprite, animations});
 	swap_loco[id] = loco;
 
 	return sprite;
@@ -224,27 +224,27 @@ void AddSwap(std::filesystem::path path)
 	else if (sprite.is_string())
 	{
 		std::string sprName = sprite.get<std::string>();
-		RValue spriteRef = g_ModuleInterface->CallBuiltin("asset_get_index", {RValue(sprName)});
+		RValue spriteRef = yytk->CallBuiltin("asset_get_index", {RValue(sprName)});
 		if (!spriteRef.ToBoolean())
 		{
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Invalid Sprite Name %s", fileName.c_str(), sprName.c_str());
 			return;
 		}
 
-		RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
-		RValue impact = g_ModuleInterface->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
+		RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
+		RValue impact = yytk->CallBuiltin("variable_struct_get", {sprite_beastie_ball_impact, RValue("_" + sprName)});
 		if (!impact.ToBoolean())
 		{
 			DbgPrintEx(LOG_SEVERITY_WARNING, "Error Loading %s - Sprite %s has no Beastie anims", fileName.c_str(), sprName.c_str());
 			return;
 		}
-		RValue loco = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
-		RValue char_anims = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_animations")});
-		RValue char_anims_sprite = g_ModuleInterface->CallBuiltin("ds_map_get", {char_anims, spriteRef});
+		RValue loco = yytk->CallBuiltin("variable_struct_get", {impact, RValue("loco_data")});
+		RValue char_anims = yytk->CallBuiltin("variable_global_get", {RValue("char_animations")});
+		RValue char_anims_sprite = yytk->CallBuiltin("ds_map_get", {char_anims, spriteRef});
 		if (!char_anims_sprite.ToBoolean()) // some beastie sprites (alt sprites like sprRat_alt) aren't in char_animations
 		{
-			RValue animations = g_ModuleInterface->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
-			g_ModuleInterface->CallBuiltin("ds_map_set", {char_anims, spriteRef, animations});
+			RValue animations = yytk->CallBuiltin("variable_struct_get", {impact, RValue("anim_data")});
+			yytk->CallBuiltin("ds_map_set", {char_anims, spriteRef, animations});
 		}
 
 		swap_sprites[id] = spriteRef;
@@ -266,7 +266,7 @@ void AddSwap(std::filesystem::path path)
 		swap_sprites[id] = spriteRef;
 	}
 
-	RValue char_dic = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_dic")});
+	RValue char_dic = yytk->CallBuiltin("variable_global_get", {RValue("char_dic")});
 	for (std::string key : color_keys)
 	{
 		if (!data.contains(key))
@@ -276,11 +276,11 @@ void AddSwap(std::filesystem::path path)
 		json color = data[key];
 		if (color.is_string())
 		{
-			RValue beastie = g_ModuleInterface->CallBuiltin("ds_map_find_value", {char_dic, RValue(color.get<std::string>())});
+			RValue beastie = yytk->CallBuiltin("ds_map_find_value", {char_dic, RValue(color.get<std::string>())});
 			if (beastie.ToBoolean())
 			{
-				RValue coldata = g_ModuleInterface->CallBuiltin("variable_instance_get", {beastie, RValue(key)});
-				data[key] = json::parse(g_ModuleInterface->CallBuiltin("json_stringify", {coldata}).ToString());
+				RValue coldata = yytk->CallBuiltin("variable_instance_get", {beastie, RValue(key)});
+				data[key] = json::parse(yytk->CallBuiltin("json_stringify", {coldata}).ToString());
 			}
 			else
 			{
@@ -368,7 +368,7 @@ void UnloadSwaps()
 			continue;
 		}
 		RValue sprite = swap_sprites[id];
-		std::string sprite_name = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite}).ToString();
+		std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {sprite}).ToString();
 		if (!sprite_name.starts_with("spr"))
 		{
 			delete_sprites.push_back(sprite);
@@ -384,14 +384,14 @@ void UnloadSwaps()
 
 void DeleteSprites()
 {
-	RValue sprite_beastie_ball_impact = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
-	RValue char_anims = g_ModuleInterface->CallBuiltin("variable_global_get", {RValue("char_animations")});
+	RValue sprite_beastie_ball_impact = yytk->CallBuiltin("variable_global_get", {RValue("sprite_beastie_ball_impact")});
+	RValue char_anims = yytk->CallBuiltin("variable_global_get", {RValue("char_animations")});
 	for (RValue sprite : delete_sprites)
 	{
-		std::string sprite_name = g_ModuleInterface->CallBuiltin("sprite_get_name", {sprite}).ToString();
-		g_ModuleInterface->CallBuiltin("variable_struct_remove", {sprite_beastie_ball_impact, RValue("_" + sprite_name)});
-		g_ModuleInterface->CallBuiltin("ds_map_delete", {char_anims, sprite});
-		g_ModuleInterface->CallBuiltin("sprite_delete", {sprite});
+		std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {sprite}).ToString();
+		yytk->CallBuiltin("variable_struct_remove", {sprite_beastie_ball_impact, RValue("_" + sprite_name)});
+		yytk->CallBuiltin("ds_map_delete", {char_anims, sprite});
+		yytk->CallBuiltin("sprite_delete", {sprite});
 	}
 	delete_sprites.clear();
 	delete_sprites.shrink_to_fit();
@@ -461,15 +461,15 @@ EXPORTED AurieStatus ModuleInitialize(
 
 	// Gets a handle to the interface exposed by YYTK
 	// You can keep this pointer for future use, as it will not change unless YYTK is unloaded.
-	g_ModuleInterface = YYTK::GetInterface();
+	yytk = YYTK::GetInterface();
 
 	// If we can't get the interface, we fail loading.
-	if (!g_ModuleInterface)
+	if (!yytk)
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
 	CreateAllHooks();
 
-	last_status = g_ModuleInterface->CreateCallback(
+	last_status = yytk->CreateCallback(
 		Module,
 		EVENT_OBJECT_CALL,
 		CodeCallback,

@@ -7,7 +7,7 @@ using json = nlohmann::json;
 using namespace Aurie;
 using namespace YYTK;
 
-extern YYTKInterface *g_ModuleInterface;
+extern YYTKInterface *yytk;
 
 extern std::vector<json> loaded_swaps;
 extern std::map<std::string, RValue> swap_sprites;
