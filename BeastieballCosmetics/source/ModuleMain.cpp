@@ -352,9 +352,11 @@ void UnloadSwaps()
 {
 	for (BeastieSwap &swap : loaded_beastie_swaps)
 	{
-		std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {swap.sprite}).ToString();
-		if (!sprite_name.starts_with("spr"))
-			delete_sprites.push_back(swap.sprite);
+		if (swap.has_sprite) {
+			std::string sprite_name = yytk->CallBuiltin("sprite_get_name", {swap.sprite}).ToString();
+			if (!sprite_name.starts_with("spr"))
+				delete_sprites.push_back(swap.sprite);
+		}
 	}
 
 	loaded_beastie_swaps.clear();
