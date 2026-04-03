@@ -164,6 +164,25 @@ RValue &CharAnimationDrawBefore(CInstance *Self, CInstance *Other, RValue &Retur
   return ReturnValue;
 }
 
+RValue GetTemplateBeastie(const RValue &specie)
+{
+  RValue templ = yytk->CallBuiltin("variable_instance_get", {specie, "TEMPLATE_BEASTIE"});
+  if (!templ.IsUndefined())
+    return templ;
+  templ = yytk->CallBuiltin("method_call", {
+    yytk->CallBuiltin("method", {specie, specie["generate"]}),
+    RValue(std::vector<RValue>{5, 0})
+  });
+  RValue colors = templ["color"];
+  int size = yytk->CallBuiltin("array_length", {colors}).ToInt32();
+  for (int i = 0; i < size; i++) {
+    colors[i] = 0.5;
+  }
+  templ["scale"] = 0.5;
+  yytk->CallBuiltin("variable_instance_set", {specie, "TEMPLATE_BEASTIE", templ});
+  return templ;
+}
+
 PFUNC_YYGMLScript shaderMonsterOriginal = nullptr;
 RValue &ShaderMonsterBefore(CInstance *Self, CInstance *Other, RValue &ReturnValue, int numArgs, RValue **Args)
 {
@@ -172,10 +191,7 @@ RValue &ShaderMonsterBefore(CInstance *Self, CInstance *Other, RValue &ReturnVal
     *Args[0] = beastie;
   beastie = *Args[0];
   if (yytk->CallBuiltin("instanceof", {beastie}).ToString() == "class_beastie_template") // For shader monster calls with a template, make a beastie so colors are correct
-    *Args[0] = yytk->CallBuiltin("method_call", {
-      yytk->CallBuiltin("method", {beastie, beastie["generate"]}),
-      RValue(std::vector<RValue>{5, 0})
-    });
+    *Args[0] = GetTemplateBeastie(beastie);
   shaderMonsterOriginal(Self, Other, ReturnValue, numArgs, Args);
 
   return ReturnValue;
