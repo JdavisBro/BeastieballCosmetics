@@ -170,6 +170,12 @@ RValue &ShaderMonsterBefore(CInstance *Self, CInstance *Other, RValue &ReturnVal
   RValue beastie = GetBeastie(Self);
   if (!beastie.IsUndefined())
     *Args[0] = beastie;
+  beastie = *Args[0];
+  if (yytk->CallBuiltin("instanceof", {beastie}).ToString() == "class_beastie_template") // For shader monster calls with a template, make a beastie so colors are correct
+    *Args[0] = yytk->CallBuiltin("method_call", {
+      yytk->CallBuiltin("method", {beastie, beastie["generate"]}),
+      RValue(std::vector<RValue>{5, 0})
+    });
   shaderMonsterOriginal(Self, Other, ReturnValue, numArgs, Args);
 
   return ReturnValue;
